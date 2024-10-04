@@ -2,7 +2,7 @@ import sys
 # Для считывания PDF
 import PyPDF2
 # Для анализа структуры PDF и извлечения текста
-from pdfminer.high_level import extract_pages, extract_text
+from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTTextContainer, LTChar, LTRect, LTFigure
 # Для извлечения текста из таблиц в PDF
 import pdfplumber
