@@ -4,15 +4,47 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a3a2aafe-6649-4c1c-9280-caeaad535ee9" name="Changes" comment="Commit 202410050131">
-      <change afterPath="$PROJECT_DIR$/database_requests.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dispatcher.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/exception.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/keyboard.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/start.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="a3a2aafe-6649-4c1c-9280-caeaad535ee9" name="Changes" comment="Commit 202410061410">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/Lerc.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/cairo.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/charset.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/deflate.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/expat.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/fontconfig-1.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/freetype.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/iconv.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/jpeg8.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/lcms2.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/libcrypto-3-x64.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/libcurl.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/libexpat.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/liblzma.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/libpng16.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/libssh2.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/libtiff.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/libzstd.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/openjp2.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdfattach.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdfdetach.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdffonts.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdfimages.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdfinfo.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdfseparate.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdftocairo.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdftohtml.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdftoppm.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdftops.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdftotext.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pdfunite.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/pixman-1-0.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/poppler-cpp.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/poppler-glib.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/poppler.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/tiff.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/zlib.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/zstd.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/zstd.exe" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/edit_pdf.py" beforeDir="false" afterPath="$PROJECT_DIR$/edit_pdf.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/operation_statement_04.10.2024 (2).pdf" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/operation_statement_04.10.2024 (3).pdf" beforeDir="false" />
@@ -66,7 +98,7 @@
     "git-widget-placeholder": "master",
     "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "C:/Users/Rossvik/PycharmProjects/SFMarketing/edit_pdf.py",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable"
   }
 }]]></component>
   <component name="RunManager" selected="Python.main">
@@ -84,6 +116,28 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/database_requests.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="edit_pdf" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SFMarketing" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/edit_pdf.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -117,6 +171,7 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.main" />
+        <item itemvalue="Python.edit_pdf" />
         <item itemvalue="Python.database_requests" />
       </list>
     </recent_temporary>
@@ -145,12 +200,30 @@
       <option name="project" value="LOCAL" />
       <updated>1728081103510</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Commit 202410060149">
+      <option name="closed" value="true" />
+      <created>1728168602447</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1728168602447</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Commit 202410061410">
+      <option name="closed" value="true" />
+      <created>1728213070135</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1728213070135</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="First commit 202410050127" />
     <MESSAGE value="Commit 202410050131" />
-    <option name="LAST_COMMIT_MESSAGE" value="Commit 202410050131" />
+    <MESSAGE value="Commit 202410060149" />
+    <MESSAGE value="Commit 202410061410" />
+    <option name="LAST_COMMIT_MESSAGE" value="Commit 202410061410" />
   </component>
 </project>

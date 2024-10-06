@@ -20,8 +20,8 @@ if sys.platform == 'win32':
 else:
     sep = ':'
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-os.environ['PATH'] += sep + r'C:\Users\Rossvik\PycharmProjects\SFMarketing\bin'
+pytesseract.pytesseract.tesseract_cmd = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["PYTESSERACT"])
+os.environ['PATH'] += sep + os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["PATH_BIN"])
 
 class GetTextOCR:
     def __init__(self, kind_content: str = 'Весь контент страницы'):
@@ -279,9 +279,9 @@ class GetTextOCR:
             result = None
         return result
 
-my_ocr = GetTextOCR()
-dict_text = my_ocr.get_text_file('operation_statement_04.10.2024 (2).pdf')
-dict_tinkoff = my_ocr.get_tinkoff(dict_text)
+# my_ocr = GetTextOCR()
+# dict_text = my_ocr.get_text_file('operation_statement_04.10.2024 (2).pdf')
+# dict_tinkoff = my_ocr.get_tinkoff(dict_text)
 # for key, item in dict_text.items():
 #     print(f'{key} {item}')
 # print(dict_text)
