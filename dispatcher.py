@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import re
 import os
@@ -9,6 +10,7 @@ import phonenumbers
 # import json
 from keyboard import KeyBoardBot
 from database_requests import Execute
+from edit_pdf import GetTextOCR
 from aiogram import F
 from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
@@ -78,7 +80,7 @@ class BotMessage(Bot):
     async def save_audio(self, message: Message):
         id_file = re.sub('[^0-9]', '', str(datetime.datetime.now()))
         name_file = f"audio_{id_file}"
-        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/document/{name_file}.mp3')
+        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/content/{name_file}.mp3')
         file_id = message.audio.file_id
         caption = message.caption
         file = await self.get_file(file_id)
@@ -88,7 +90,7 @@ class BotMessage(Bot):
     async def save_document(self, message: Message):
         id_file = re.sub('[^0-9]', '', str(datetime.datetime.now()))
         name_file = f"{id_file}_{message.document.file_name}"
-        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/document/{name_file}')
+        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/content/{name_file}')
         file_id = message.document.file_id
         caption = message.caption
         file = await self.get_file(file_id)
@@ -98,7 +100,7 @@ class BotMessage(Bot):
     async def save_voice(self, message: Message):
         id_file = re.sub('[^0-9]', '', str(datetime.datetime.now()))
         name_file = f"voice_{id_file}"
-        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/document/{name_file}.ogg')
+        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/content/{name_file}.ogg')
         file_id = message.voice.file_id
         caption = message.caption
         file = await self.get_file(file_id)
@@ -108,7 +110,7 @@ class BotMessage(Bot):
     async def save_photo(self, message: Message):
         id_file = re.sub('[^0-9]', '', str(datetime.datetime.now()))
         name_file = f"photo_{id_file}"
-        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/document/{name_file}.jpg')
+        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/content/{name_file}.jpg')
         file_id = message.photo[-1].file_id
         caption = message.caption
         file = await self.get_file(file_id)
@@ -118,7 +120,7 @@ class BotMessage(Bot):
     async def save_video(self, message: Message):
         id_file = re.sub('[^0-9]', '', str(datetime.datetime.now()))
         name_file = f"video_{id_file}"
-        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/document/{name_file}.mp4')
+        filepath = os.path.join(os.path.split(os.path.dirname(__file__))[0], f'data/content/{name_file}.mp4')
         file_id = message.video.file_id
         caption = message.caption
         file = await self.get_file(file_id)
@@ -140,6 +142,7 @@ class DispatcherMessage(Dispatcher):
         self.execute = Execute()
         self.timer = TimerClean(self, 82800)
         self.queues = QueuesMedia(self)
+        self.info_pdf = GetTextOCR()
         self.queues_message = QueuesMessage()
         self.list_user = asyncio.run(self.execute.get_list_user)
 
@@ -163,8 +166,9 @@ class DispatcherMessage(Dispatcher):
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
                 print("audio")
             elif message.content_type == "document":
-                await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
-                print("document")
+                task = asyncio.create_task(self.get_document(message, self.list_user[message.from_user.id]['messages']))
+                await self.queues.start(message.from_user.id, task)
+                await self.timer.start(message.from_user.id)
             elif message.content_type == "photo":
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
                 print("photo")
@@ -245,10 +249,9 @@ class DispatcherMessage(Dispatcher):
         self.list_user[call_back.from_user.id]['history'] = ['start']
         await self.execute.set_user(call_back.from_user.id, self.list_user[call_back.from_user.id])
 
-    async def start_for_timer(self, user_id: int):
+    async def start_for_timer(self, user_id: int, text_message: str):
         try:
             first_keyboard = await self.keyboard.get_first_keyboard()
-            text_message = f'Привет, {self.list_user[user_id]['history']} {self.list_user[user_id]['history']}!'
             answer = await self.bot.send_message_start(user_id, self.build_keyboard(first_keyboard, 1),
                                                        text_message)
             list_messages_for_record = await self.delete_messages(user_id, self.list_user[user_id]['messages'])
@@ -432,7 +435,7 @@ class DispatcherMessage(Dispatcher):
                     path_file = item
                 else:
                     path_reverse = "\\".join(item.split("/"))
-                    path_file = 'CC:\\Users\\Rossvik\\PycharmProjects\\' + path_reverse
+                    path_file = 'C:\\Users\\Rossvik\\PycharmProjects\\' + path_reverse
             file_input = FSInputFile(path_file)
             media_group.add_document(media=file_input, parse_mode=ParseMode.HTML)
         return await self.bot.send_media_group(chat_id=message.chat.id, media=media_group.build())
@@ -543,13 +546,11 @@ class QueuesMedia:
     def __init__(self, parent):
         self.parent = parent
         self.queues = []
-        self.info_media = None
+        self.text_document = None
 
     async def start(self, user_id: int, new_media: asyncio.Task):
         if len(self.queues) == 0:
             self.queues.append(new_media)
-            start_info = await self.parent.execute.get_info_order(user_id)
-            self.info_media = [start_info[8], start_info[9]]
             await self.start_task(user_id)
         else:
             self.queues.append(new_media)
@@ -557,8 +558,8 @@ class QueuesMedia:
     async def start_task(self, user_id: int):
         info = await self.queues[0]
         print(info)
-        update_info = await self.parent.record_comment_and_content(info, self.info_media)
-        self.info_media = update_info
+        list_info = self.parent.info_pdf.get_text_file(info[0])
+        self.text_document = "".join(list_info)
         await self.delete_task_queues(user_id)
 
     async def delete_task_queues(self, user_id: int):
@@ -569,9 +570,9 @@ class QueuesMedia:
         if len(self.queues) != 0:
             await self.start_task(user_id)
         else:
-            await self.parent.execute.record_order_comment_and_content(user_id, self.info_media[0], self.info_media[1])
-            self.info_media = None
-            await self.parent.change_head_message_by_media(user_id)
+            # await self.parent.execute.set_outlay(user_id)
+            await self.parent.start_for_timer(user_id, self.text_document)
+            self.text_document = None
 
 
 class QueuesMessage:

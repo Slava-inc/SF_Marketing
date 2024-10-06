@@ -265,10 +265,10 @@ class GetTextOCR:
     # Определяем какой документ пришел из банка Тинькофф и записываем текст словарь
     def get_tinkoff(self, result: list):
         if 'АО «ТБАНК»' in result[1]:
-            dict_tinkoff = self.outlay_dict_tinkoff(result)
+            dict_tinkoff_pay = self.outlay_dict_tinkoff(result)
         else:
-            dict_tinkoff = self.receipt_dict_tinkoff(result)
-        return dict_tinkoff
+            dict_tinkoff_pay = self.receipt_dict_tinkoff(result)
+        return dict_tinkoff_pay
 
     def get_text_file(self, path_file: str):
         if path_file.split('.')[-1] == 'pdf':
@@ -280,8 +280,8 @@ class GetTextOCR:
         return result
 
 my_ocr = GetTextOCR()
-dict_text = my_ocr.get_text_file('operation_statement_04.10.2024 (3).pdf')
+dict_text = my_ocr.get_text_file('operation_statement_04.10.2024 (2).pdf')
 dict_tinkoff = my_ocr.get_tinkoff(dict_text)
 # for key, item in dict_text.items():
 #     print(f'{key} {item}')
-print(dict_tinkoff)
+# print(dict_text)

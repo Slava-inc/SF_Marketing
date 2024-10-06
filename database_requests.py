@@ -1,4 +1,4 @@
-# import asyncio
+import asyncio
 # import json
 import logging
 import aiosqlite
@@ -26,20 +26,33 @@ class Execute:
     async def create_table(self):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
-                return await self.execute_create_table()
+                await self.execute_create_table()
         except Exception as e:
             await send_message('Ошибка запроса в методе create_table', os.environ["EMAIL"], str(e))
 
     async def execute_create_table(self):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
-            sql_create_table = f"CREATE TABLE IF NOT EXISTS USERS (" \
+            sql_create_table = f"CREATE TABLE IF NOT EXISTS OUTLAY (" \
                                f"ID INTEGER PRIMARY KEY, " \
-                               f"HISTORY TEXT NOT NULL, " \
-                               f"MESSAGES TEXT NOT NULL, " \
-                               f"FIRST_NAME TEXT, " \
-                               f"LAST_NAME TEXT, " \
-                               f"USER_NAME TEXT NOT NULL)"
+                               f"USER_ID INTEGER NOT NULL, " \
+                               f"DATA_TIME TEXT, " \
+                               f"SUM REAL, " \
+                               f"NAME_BANK TEXT, " \
+                               f"RECIPIENT_FUNDS TEXT, " \
+                               f"FOREIGN KEY (USER_ID) REFERENCES USERS (ID))"
             await cursor.execute(sql_create_table)
+            await self.conn.commit()
+
+    async def delete_table(self, name_table: str):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_delete_table(name_table)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе delete_table', os.environ["EMAIL"], str(e))
+
+    async def execute_delete_table(self, name_table: str):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            await cursor.execute(f"DROP TABLE {name_table}")
             await self.conn.commit()
 
     @property
@@ -106,7 +119,7 @@ class Execute:
                          f"HISTORY = '{history}', " \
                          f"MESSAGES = '{messages}', " \
                          f"FIRST_NAME = '{dict_info_user["first_name"]}', " \
-                         f"LAST_NAM = '{dict_info_user["last_name"]}', " \
+                         f"LAST_NAME = '{dict_info_user["last_name"]}', " \
                          f"USER_NAME = '{dict_info_user["user_name"]}' " \
                          f"WHERE ID = {id_user} "
             await cursor.execute(sql_record)
@@ -172,6 +185,3 @@ class Execute:
     @staticmethod
     async def get_str(list_messages: list) -> str:
         return ' '.join(list_messages)
-
-# my_base = Execute()
-# asyncio.run(my_base.show_columns('USERS'))
