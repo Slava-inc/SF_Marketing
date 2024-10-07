@@ -1,1 +1,1 @@
-Структура бота: https://disk.yandex.ru/i/dDyyuFzvC82sGg
+Структура бота: https://disk.yandex.ru/i/227LsCT2ZNnYgQ
