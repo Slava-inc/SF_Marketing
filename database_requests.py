@@ -1,14 +1,9 @@
-import asyncio
-# import json
 import logging
 import aiosqlite
 import os
 from dotenv import load_dotenv
-# import datetime
 from prettytable import PrettyTable
 from exception import send_message
-# from aiogram.types import Message
-# from operator import itemgetter
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -109,18 +104,18 @@ class Execute:
 
     async def execute_set_user(self, id_user: int, dict_info_user: dict):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
-            history = await self.get_str(dict_info_user["history"])
-            messages = await self.get_str(dict_info_user["messages"])
+            history = await self.get_str(dict_info_user['history'])
+            messages = await self.get_str(dict_info_user['messages'])
             sql_record = f"INSERT INTO USERS " \
                          f"(ID, HISTORY, MESSAGES, FIRST_NAME, LAST_NAME, USER_NAME) " \
-                         f"VALUES('{id_user}', '{history}', '{messages}', '{dict_info_user["first_name"]}', " \
-                         f"'{dict_info_user["last_name"]}', '{dict_info_user["user_name"]}') " \
+                         f"VALUES('{id_user}', '{history}', '{messages}', '{dict_info_user['first_name']}', " \
+                         f"'{dict_info_user['last_name']}', '{dict_info_user['user_name']}') " \
                          f"ON CONFLICT (ID) DO UPDATE SET " \
                          f"HISTORY = '{history}', " \
                          f"MESSAGES = '{messages}', " \
-                         f"FIRST_NAME = '{dict_info_user["first_name"]}', " \
-                         f"LAST_NAME = '{dict_info_user["last_name"]}', " \
-                         f"USER_NAME = '{dict_info_user["user_name"]}' " \
+                         f"FIRST_NAME = '{dict_info_user['first_name']}', " \
+                         f"LAST_NAME = '{dict_info_user['last_name']}', " \
+                         f"USER_NAME = '{dict_info_user['user_name']}' " \
                          f"WHERE ID = {id_user} "
             await cursor.execute(sql_record)
             await self.conn.commit()
@@ -166,7 +161,6 @@ class Execute:
                 await self.execute_show_columns(name_table)
         except Exception as e:
             await send_message('Ошибка запроса в методе show_columns', os.environ["EMAIL"], str(e))
-
 
     async def execute_show_columns(self, name_table: str):
         async with self.conn.execute(f'PRAGMA table_info({name_table})') as cursor:

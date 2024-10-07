@@ -23,6 +23,7 @@ else:
 pytesseract.pytesseract.tesseract_cmd = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["PYTESSERACT"])
 os.environ['PATH'] += sep + os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["PATH_BIN"])
 
+
 class GetTextOCR:
     def __init__(self, kind_content: str = 'Весь контент страницы'):
         self.kind_content = kind_content
@@ -54,7 +55,7 @@ class GetTextOCR:
     @staticmethod
     def crop_image(element, page_obj):
         # Получаем координаты для вырезания изображения из PDF
-        [image_left, image_top, image_right, image_bottom] = [element.x0,element.y0,element.x1,element.y1]
+        [image_left, image_top, image_right, image_bottom] = [element.x0, element.y0, element.x1, element.y1]
         # Обрезаем страницу по координатам (left, bottom, right, top)
         page_obj.mediabox.lower_left = (image_left, image_bottom)
         page_obj.mediabox.upper_right = (image_right, image_top)
@@ -103,7 +104,7 @@ class GetTextOCR:
             # Удаляем разрыв строки из текста с переносом
             cleaned_row = [item.replace('\n', ' ') if item is not None and '\n' in item else 'None' if item is None else item for item in row]
             # Преобразуем таблицу в строку
-            table_string+=('|'+'|'.join(cleaned_row)+'|'+'\n')
+            table_string += ('|'+'|'.join(cleaned_row)+'|'+'\n')
         # Удаляем последний разрыв строки
         table_string = table_string[:-1]
         return table_string
@@ -148,8 +149,6 @@ class GetTextOCR:
             page_elements.sort(key=lambda a: a[0], reverse=True)
             # Находим элементы, составляющие страницу
             for i, component in enumerate(page_elements):
-                # Извлекаем положение верхнего края элемента в PDF
-                pos = component[0]
                 # Извлекаем элемент структуры страницы
                 element = component[1]
 
@@ -185,7 +184,7 @@ class GetTextOCR:
                 # Проверяем элементы на наличие таблиц
                 if isinstance(element, LTRect):
                     # Если первый прямоугольный элемент
-                    if first_element == True and (table_num + 1) <= len(tables):
+                    if first_element and (table_num + 1) <= len(tables):
                         # Находим ограничивающий прямоугольник таблицы
                         lower_side = page.bbox[3] - tables[table_num].bbox[3]
                         upper_side = element.y1

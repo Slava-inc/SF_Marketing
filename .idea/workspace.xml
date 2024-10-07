@@ -4,55 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a3a2aafe-6649-4c1c-9280-caeaad535ee9" name="Changes" comment="Commit 202410061410">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/Lerc.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/cairo.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/charset.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/deflate.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/expat.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/fontconfig-1.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/freetype.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/iconv.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/jpeg8.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/lcms2.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/libcrypto-3-x64.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/libcurl.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/libexpat.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/liblzma.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/libpng16.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/libssh2.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/libtiff.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/libzstd.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/openjp2.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdfattach.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdfdetach.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdffonts.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdfimages.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdfinfo.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdfseparate.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdftocairo.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdftohtml.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdftoppm.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdftops.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdftotext.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pdfunite.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/pixman-1-0.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/poppler-cpp.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/poppler-glib.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/poppler.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/tiff.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/zlib.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/zstd.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/zstd.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/edit_pdf.py" beforeDir="false" afterPath="$PROJECT_DIR$/edit_pdf.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/operation_statement_04.10.2024 (2).pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/operation_statement_04.10.2024 (3).pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/receipt_04.10.2024.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Документ-2024-10-04-20_27_31.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Документ-2024-10-04-20_28_24.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Квитанция.pdf" beforeDir="false" />
-    </list>
+    <list default="true" id="a3a2aafe-6649-4c1c-9280-caeaad535ee9" name="Changes" comment="Commit 202410080014" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -68,43 +20,46 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "IgorVolostnov"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;IgorVolostnov&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/IgorVolostnov/SF_Marketing.git",
-    "accountId": "77bc850e-b378-4d1e-956e-1ccaa250abc7"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/IgorVolostnov/SF_Marketing.git&quot;,
+    &quot;accountId&quot;: &quot;77bc850e-b378-4d1e-956e-1ccaa250abc7&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 4
-}]]></component>
+}</component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
   <component name="ProjectId" id="2mz2viNyICOwLs8jhu052RPBK9F" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.database_requests.executor": "Run",
-    "Python.edit_pdf.executor": "Run",
-    "Python.main.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/Users/Rossvik/PycharmProjects/SFMarketing/edit_pdf.py",
-    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.database_requests.executor&quot;: &quot;Run&quot;,
+    &quot;Python.edit_pdf.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Python 3.11/Мои проекты/SF_Marketing/requirements.txt&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Python.main">
     <configuration name="database_requests" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="SFMarketing" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -126,7 +81,6 @@
     </configuration>
     <configuration name="edit_pdf" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="SFMarketing" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -148,7 +102,6 @@
     </configuration>
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="SFMarketing" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -216,14 +169,33 @@
       <option name="project" value="LOCAL" />
       <updated>1728213070135</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Commit 202410080014">
+      <created>1728335687242</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1728335687242</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="First commit 202410050127" />
     <MESSAGE value="Commit 202410050131" />
     <MESSAGE value="Commit 202410060149" />
     <MESSAGE value="Commit 202410061410" />
-    <option name="LAST_COMMIT_MESSAGE" value="Commit 202410061410" />
+    <MESSAGE value="Commit 202410080014" />
+    <option name="LAST_COMMIT_MESSAGE" value="Commit 202410080014" />
   </component>
 </project>
