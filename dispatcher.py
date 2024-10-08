@@ -31,6 +31,8 @@ class BotTelegram:
 class BotMessage(Bot):
     def __init__(self, token, **kw):
         Bot.__init__(self, token, **kw)
+        self.logo_main_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                                                       os.environ["MAIN_MENU_PNG"]))
 
     async def delete_messages_chat(self, chat_id: int, list_message: list):
         try:
@@ -124,9 +126,9 @@ class DispatcherMessage(Dispatcher):
     def __init__(self, parent, **kw):
         Dispatcher.__init__(self, **kw)
         self.bot = parent
-        self.functions = Function(parent)
+        self.functions = Function(self.bot, self)
         self.execute = Execute()
-        self.timer = TimerClean(self, 30)
+        self.timer = TimerClean(self, 43200)
         self.queues = QueuesMedia(self)
         self.queues_message = QueuesMessage()
         self.dict_user = self.functions.dict_user
@@ -180,20 +182,26 @@ class DispatcherMessage(Dispatcher):
             else:
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
 
-        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'call_back1'))
-        async def send_catalog_message(callback: CallbackQuery):
-            await self.bot.delete_messages_chat(callback.message.chat.id, [callback.message.message_id])
-            print("call_back1")
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'goal'))
+        async def send_goal_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.task_goal(callback))
+            task.set_name(f'{callback.from_user.id}_task_goal')
+            await self.queues_message.start(task)
+            await self.timer.start(callback.from_user.id)
 
-        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'call_back2'))
-        async def remove_dealer_price(callback: CallbackQuery):
-            await self.bot.delete_messages_chat(callback.message.chat.id, [callback.message.message_id])
-            print("call_back2")
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'outlay'))
+        async def send_outlay_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.task_outlay(callback))
+            task.set_name(f'{callback.from_user.id}_task_outlay')
+            await self.queues_message.start(task)
+            await self.timer.start(callback.from_user.id)
 
-        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'call_back3'))
-        async def show_dealer_price(callback: CallbackQuery):
-            await self.bot.delete_messages_chat(callback.message.chat.id, [callback.message.message_id])
-            print("call_back3")
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'income'))
+        async def send_income_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.task_income(callback))
+            task.set_name(f'{callback.from_user.id}_task_income')
+            await self.queues_message.start(task)
+            await self.timer.start(callback.from_user.id)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))
         async def send_return_message(callback: CallbackQuery):

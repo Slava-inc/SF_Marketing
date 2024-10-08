@@ -16,8 +16,9 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Function:
-    def __init__(self, parent):
-        self.bot = parent
+    def __init__(self, bot, dispatcher):
+        self.bot = bot
+        self.dispatcher = dispatcher
         self.keyboard = KeyBoardBot()
         self.execute = Execute()
         self.info_pdf = GetTextOCR()
@@ -27,6 +28,12 @@ class Function:
         self.dict_user[call_back.from_user.id]['history'].pop()
         if self.dict_user[call_back.from_user.id]['history'][-1] == 'start':
             await self.return_start(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'goal':
+            await self.show_goal(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'outlay':
+            await self.show_outlay(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'income':
+            await self.show_income(call_back)
         else:
             await self.return_start(call_back)
         return True
@@ -49,26 +56,37 @@ class Function:
                                                         'first_name': message.from_user.first_name,
                                                         'last_name': message.from_user.last_name,
                                                         'user_name': message.from_user.username}
-            first_keyboard = await self.keyboard.get_first_keyboard()
-            text_message = f'Привет, {message.from_user.first_name} {message.from_user.last_name}!'
-            answer = await self.answer_message(message, text_message, self.build_keyboard(first_keyboard, 1))
+            first_keyboard = await self.keyboard.get_first_menu()
+            text_message = f"{self.format_text('Поставить цель 🎯')} - выбрать цель, на которую будем копить!\n" \
+                           f"{self.format_text('Расходы 🧮')} - меню учета расходов\n" \
+                           f"{self.format_text('Доходы 💰')} - меню учета доходов\n"
+            answer = await self.bot.push_photo(message.chat.id, text_message, self.build_keyboard(first_keyboard, 1),
+                                               self.bot.logo_main_menu)
             self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
-            list_messages_for_record = await self.delete_messages(message.from_user.id,
-                                                                  self.dict_user[message.from_user.id]['messages'])
-            list_messages_for_record.append(str(answer.message_id))
-            self.dict_user[message.from_user.id]['messages'] = list_messages_for_record
+            self.dict_user[message.from_user.id]['messages'] = await self.delete_messages(message.from_user.id,
+                                                                                          self.dict_user[
+                                                                                              message.from_user.id][
+                                                                                              'messages'])
+            self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
             self.dict_user[message.from_user.id]['history'] = ['start']
             await self.execute.set_user(message.from_user.id, self.dict_user[message.from_user.id])
         return True
 
     async def return_start(self, call_back: CallbackQuery):
-        first_keyboard = await self.keyboard.get_first_keyboard()
-        text_message = f'Привет, {call_back.from_user.first_name} {call_back.from_user.last_name}!'
-        answer = await self.answer_message(call_back.message, text_message, self.build_keyboard(first_keyboard, 1))
-        list_messages_for_record = await self.delete_messages(call_back.from_user.id,
-                                                              self.dict_user[call_back.from_user.id]['messages'])
-        list_messages_for_record.append(str(answer.message_id))
-        self.dict_user[call_back.from_user.id]['messages'] = list_messages_for_record
+        first_keyboard = await self.keyboard.get_first_menu()
+        text = f"{self.format_text('Поставить цель 🎯')} - выбрать цель, на которую будем копить!\n" \
+               f"{self.format_text('Расходы 🧮')} - меню учета расходов\n" \
+               f"{self.format_text('Доходы 💰')} - меню учета доходов\n"
+        if len(self.dict_user[call_back.from_user.id]['messages']) > 1:
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(first_keyboard, 1), self.bot.logo_main_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(call_back.from_user.id,
+                                                                                            self.dict_user[
+                                                                                                call_back.from_user.id][
+                                                                                                'messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        else:
+            await self.edit_caption(call_back.message, text, self.build_keyboard(first_keyboard, 1))
         self.dict_user[call_back.from_user.id]['history'] = ['start']
         await self.execute.set_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
 
@@ -76,7 +94,7 @@ class Function:
         try:
             if text_message is None:
                 text_message = await self.keyboard.text_for_timer()
-            first_keyboard = await self.keyboard.get_first_keyboard()
+            first_keyboard = await self.keyboard.get_first_menu()
             answer = await self.bot.send_message_start(user_id, self.build_keyboard(first_keyboard, 1),
                                                        text_message)
             list_messages_for_record = await self.delete_messages(user_id, self.dict_user[user_id]['messages'])
@@ -90,38 +108,57 @@ class Function:
             self.dict_user.pop(user_id)
             return False
 
-    async def task_command_link(self, message: Message):
-        check = await self.checking_bot(message)
-        if check:
-            await self.delete_messages(message.from_user.id, [message.message_id])
-        else:
-            await self.show_link(message)
+    async def task_goal(self, call_back: CallbackQuery):
+        await self.show_goal(call_back)
         return True
 
-    async def show_link(self, message: Message):
-        link_keyboard = {'https://t.me/rossvik_moscow': 'Канал @ROSSVIK_MOSCOW 📣💬',
-                         'https://www.rossvik.moscow/': 'Сайт WWW.ROSSVIK.MOSCOW 🌐', 'back': '◀ 👈 Назад'}
-        answer = await self.answer_message(message,
-                                           f"Перейдите по ссылкам ниже, чтобы узнать ещё больше информации:",
-                                           self.build_keyboard(link_keyboard, 1))
-        self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
-        list_messages_for_record = await self.delete_messages(message.from_user.id,
-                                                              self.dict_user[message.from_user.id]['messages'])
-        list_messages_for_record.append(str(answer.message_id))
-        self.dict_user[message.from_user.id]['messages'] = list_messages_for_record
-        self.dict_user[message.from_user.id]['history'].append('news')
-        await self.execute.set_user(message.from_user.id, self.dict_user[message.from_user.id])
+    async def show_goal(self, call_back: CallbackQuery):
+        print('Переход в меню постановки цели')
 
-    async def return_show_link(self, call_back: CallbackQuery):
-        link_keyboard = {'https://t.me/rossvik_moscow': 'Канал @ROSSVIK_MOSCOW 📣💬',
-                         'https://www.rossvik.moscow/': 'Сайт WWW.ROSSVIK.MOSCOW 🌐', 'back': '◀ 👈 Назад'}
-        answer = await self.answer_message(call_back.message,
-                                           f"Перейдите по ссылкам ниже, чтобы узнать ещё больше информации:",
-                                           self.build_keyboard(link_keyboard, 1))
-        list_messages_for_record = await self.delete_messages(call_back.from_user.id,
-                                                              self.dict_user[call_back.from_user.id]['messages'])
-        list_messages_for_record.append(str(answer.message_id))
-        self.dict_user[call_back.from_user.id]['messages'] = list_messages_for_record
+    async def task_outlay(self, call_back: CallbackQuery):
+        await self.show_outlay(call_back)
+        return True
+
+    async def show_outlay(self, call_back: CallbackQuery):
+        keyboard_outlay = await self.keyboard.get_outlay_menu()
+        text = f"{self.format_text('Показать список расходов 📋')} - вывести на экран список всех расходов за месяц\n" \
+               f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
+               f"{self.format_text('Изменить категории расходов 📁')} - изменить список категорий расходов\n" \
+               f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+        if len(self.dict_user[call_back.from_user.id]['messages']) > 1:
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(keyboard_outlay, 1), self.bot.logo_main_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(call_back.from_user.id,
+                                                                                            self.dict_user[
+                                                                                                call_back.from_user.id][
+                                                                                                'messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        else:
+            await self.edit_caption(call_back.message, text, self.build_keyboard(keyboard_outlay, 1))
+        self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
+        await self.execute.set_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+
+    async def task_income(self, call_back: CallbackQuery):
+        await self.show_income(call_back)
+        return True
+
+    async def show_income(self, call_back: CallbackQuery):
+        keyboard_income = await self.keyboard.get_income_menu()
+        text = f"{self.format_text('Показать список доходов 📋')} - вывести на экран список всех доходов за месяц\n" \
+               f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
+               f"{self.format_text('Изменить категории доходов 📁')} - изменить список категорий доходов\n" \
+               f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+        if len(self.dict_user[call_back.from_user.id]['messages']) > 1:
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(keyboard_income, 1), self.bot.logo_main_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(call_back.from_user.id,
+                                                                                            self.dict_user[
+                                                                                                call_back.from_user.id][
+                                                                                                'messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        else:
+            await self.edit_caption(call_back.message, text, self.build_keyboard(keyboard_income, 1))
+        self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
         await self.execute.set_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
 
     async def get_document(self, message: Message, list_messages: list):
@@ -217,7 +254,7 @@ class Function:
                                               reply_markup=keyboard)
         except TelegramBadRequest:
             photo = "https://www.rossvik.moscow/images/no_foto.png"
-            text_by_format = await self.format_text(caption)
+            text_by_format = self.format_text(caption)
             return await message.answer_photo(photo=photo, caption=text_by_format, parse_mode=ParseMode.HTML,
                                               reply_markup=keyboard)
 
@@ -326,7 +363,7 @@ class Function:
         return menu
 
     @staticmethod
-    async def format_text(text_message: str) -> str:
+    def format_text(text_message: str) -> str:
         cleaner = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
         clean_text = re.sub(cleaner, '', text_message)
         return f'<b>{clean_text}</b>'

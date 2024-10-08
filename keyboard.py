@@ -7,24 +7,39 @@ class KeyBoardBot:
         self.execute = Execute()
 
     @staticmethod
-    async def get_first_keyboard() -> dict:
+    async def get_first_menu() -> dict:
         button_first_keyboard = {'goal': 'Поставить цель 🎯',
                                  'outlay': 'Расходы 🧮',
-                                 'income': 'Доходы 💰,',
-                                 'category': 'Категории расходов 📋'}
+                                 'income': 'Доходы 💰'}
         return button_first_keyboard
 
     @staticmethod
-    async def get_outlay(known_category: bool) -> dict:
+    async def get_outlay_menu():
+        button_outlay_keyboard = {'show_outlay': 'Показать список расходов 📋',
+                                  'analytic_outlay': 'Аналитика расходов 📊',
+                                  'change_category_outlay': 'Изменить категории расходов 📋',
+                                  'back': 'Назад 🔙'}
+        return button_outlay_keyboard
+
+    @staticmethod
+    async def get_income_menu():
+        button_income_keyboard = {'show_outlay': 'Показать список доходов 📋',
+                                  'analytic_outlay': 'Аналитика доходов 📊',
+                                  'change_category_income': 'Изменить категории доходов 📋',
+                                  'back': 'Назад 🔙'}
+        return button_income_keyboard
+
+    @staticmethod
+    async def get_keyboard_outlay(known_category: bool = True) -> dict:
         if known_category:
-            button_outlay_keyboard = {'goal': 'Изменить категорию 📋',
-                                      'outlay': 'Аналитика расходов 📊',
+            button_outlay_keyboard = {'change_category_outlay': 'Изменить категорию расходов📋',
+                                      'analytic_outlay': 'Аналитика расходов 📊',
                                       'back': 'Назад 🔙'}
         else:
             button_outlay_keyboard = {'auto': 'Автомобиль 📋',
                                       'business': 'Бизнес  📋',
-                                      'souvenir': 'Благотворительность, помощь, подарки 📋',
-                                      'home_appliances': 'Бытовая техника и расходные материалы 📋',
+                                      'souvenir': 'Подарки 📋',
+                                      'home_appliances': 'Бытовая техника 📋',
                                       'children': 'Дети 📋',
                                       'pets': 'Домашние животные 📋',
                                       'health ': 'Здоровье и красота 📋',
@@ -40,8 +55,9 @@ class KeyBoardBot:
                                       'transport': 'Транспорт 📋',
                                       'hobby': 'Хобби 📋',
                                       'connection': 'Связь и интернет ',
-                                      'goal': 'Добавить категорию 📋',
-                                      'outlay': 'Аналитика расходов 📊',
+                                      'add_category_outlay': 'Добавить свою категорию 📋',
+                                      'delete_category_outlay': 'Удалить категорию',
+                                      'analytic_outlay': 'Аналитика расходов 📊',
                                       'back': 'Назад 🔙'}
         return button_outlay_keyboard
 
