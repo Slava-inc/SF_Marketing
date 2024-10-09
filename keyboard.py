@@ -62,7 +62,7 @@ class KeyBoardBot:
         return button_outlay_keyboard
 
     @staticmethod
-    async def text_for_timer() -> str:
+    async def text_for_news() -> str:
         text = ['Не бывает статей расходов, которые не были бы важны для вас. Чтобы тратить меньше следует '
                 'сокращать каждую статью пропорционально друг другу, т.е. вычитывать средства из каждой статьи '
                 'в одинаковом процентном соотношении.',

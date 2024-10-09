@@ -12,6 +12,7 @@ from aiogram.filters.command import Command
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 from aiogram.enums.parse_mode import ParseMode
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,6 +23,7 @@ class BotTelegram:
         self.dispatcher = DispatcherMessage(self.bot)
 
     async def start_dispatcher(self):
+        self.dispatcher.scheduler.start()
         await self.dispatcher.start_polling(self.bot)
 
     def run(self):
@@ -56,7 +58,7 @@ class BotMessage(Bot):
     async def edit_head_keyboard(self, chat_message: int, id_message: int, keyboard: InlineKeyboardMarkup):
         return await self.edit_message_reply_markup(chat_id=chat_message, message_id=id_message, reply_markup=keyboard)
 
-    async def send_message_start(self, chat_id: int, keyboard: InlineKeyboardMarkup, text_message: str):
+    async def send_message_news(self, chat_id: int, keyboard: InlineKeyboardMarkup, text_message: str):
         return await self.send_message(chat_id=chat_id, text=self.format_text(text_message),
                                        parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
@@ -126,19 +128,20 @@ class DispatcherMessage(Dispatcher):
     def __init__(self, parent, **kw):
         Dispatcher.__init__(self, **kw)
         self.bot = parent
+        self.scheduler = AsyncIOScheduler()
         self.functions = Function(self.bot, self)
         self.execute = Execute()
-        self.timer = TimerClean(self, 43200)
         self.queues = QueuesMedia(self)
         self.queues_message = QueuesMessage()
         self.dict_user = self.functions.dict_user
+        self.startup.register(self.on_startup)
+        self.shutdown.register(self.on_shutdown)
 
         @self.message(Command("start"))
         async def cmd_start(message: Message):
-            task = asyncio.create_task(self.functions.task_command_start(message))
+            task = asyncio.create_task(self.functions.show_command_start(message))
             task.set_name(f'{message.from_user.id}_task_command_start')
             await self.queues_message.start(task)
-            await self.timer.start(message.from_user.id)
 
         @self.message(F.from_user.id.in_(self.dict_user) & F.content_type.in_({
             "text", "audio", "document", "photo", "sticker", "video", "video_note", "voice", "location", "contact",
@@ -157,7 +160,6 @@ class DispatcherMessage(Dispatcher):
                                                                        self.dict_user[
                                                                            message.from_user.id]['messages']))
                 await self.queues.start(message.from_user.id, task)
-                await self.timer.start(message.from_user.id)
             elif message.content_type == "photo":
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
                 print("photo")
@@ -184,58 +186,40 @@ class DispatcherMessage(Dispatcher):
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'goal'))
         async def send_goal_message(callback: CallbackQuery):
-            task = asyncio.create_task(self.functions.task_goal(callback))
+            task = asyncio.create_task(self.functions.show_goal(callback))
             task.set_name(f'{callback.from_user.id}_task_goal')
             await self.queues_message.start(task)
-            await self.timer.start(callback.from_user.id)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'outlay'))
         async def send_outlay_message(callback: CallbackQuery):
-            task = asyncio.create_task(self.functions.task_outlay(callback))
+            task = asyncio.create_task(self.functions.show_outlay(callback))
             task.set_name(f'{callback.from_user.id}_task_outlay')
             await self.queues_message.start(task)
-            await self.timer.start(callback.from_user.id)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'income'))
         async def send_income_message(callback: CallbackQuery):
-            task = asyncio.create_task(self.functions.task_income(callback))
+            task = asyncio.create_task(self.functions.show_income(callback))
             task.set_name(f'{callback.from_user.id}_task_income')
             await self.queues_message.start(task)
-            await self.timer.start(callback.from_user.id)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))
         async def send_return_message(callback: CallbackQuery):
-            task = asyncio.create_task(self.functions.task_back(callback))
+            task = asyncio.create_task(self.functions.show_back(callback))
             task.set_name(f'{callback.from_user.id}_task_back')
             await self.queues_message.start(task)
-            await self.timer.start(callback.from_user.id)
 
+    async def on_startup(self):
+        await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot запущен!')
+        self.scheduler_send_news()
 
-class TimerClean:
-    def __init__(self, parent, second: int):
-        self.parent = parent
-        self._clean_time = second
-        self.t = {}
+    def scheduler_send_news(self):
+        self.scheduler.add_job(self.functions.newsletter, 'cron', day_of_week='mon-sun', hour=10, minute=00,
+                               end_date='2025-01-30')
 
-    async def start(self, user: int):
-        if user in self.t.keys():
-            self.t[user].cancel()
-            self.t.pop(user)
-            self.t[user] = asyncio.create_task(self.clean_chat(user))
-            await self.t[user]
-        else:
-            self.t[user] = asyncio.create_task(self.clean_chat(user))
-            await self.t[user]
-
-    async def clean_chat(self, user: int):
-        await asyncio.sleep(self._clean_time)
-        id_message = await self.parent.functions.start_for_timer(user)
-        if id_message:
-            await self.clean_timer(user)
-
-    async def clean_timer(self, user: int):
-        self.t.pop(user)
-        await self.start(user)
+    async def on_shutdown(self):
+        # Отправляем сообщение администратору о том, что бот был остановлен
+        await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot остановлен!')
+        await self.bot.session.close()
 
 
 class QueuesMedia:

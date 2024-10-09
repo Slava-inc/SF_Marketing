@@ -120,6 +120,32 @@ class Execute:
             await cursor.execute(sql_record)
             await self.conn.commit()
 
+    async def set_all_users(self, dict_user: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_all_users(dict_user)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе set_all_users', os.environ["EMAIL"], str(e))
+
+    async def execute_set_all_users(self, dict_users: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            for key, item in dict_users.items():
+                history = await self.get_str(item['history'])
+                messages = await self.get_str(item['messages'])
+                sql_record = f"INSERT INTO USERS " \
+                             f"(ID, HISTORY, MESSAGES, FIRST_NAME, LAST_NAME, USER_NAME) " \
+                             f"VALUES('{key}', '{history}', '{messages}', '{item['first_name']}', " \
+                             f"'{item['last_name']}', '{item['user_name']}') " \
+                             f"ON CONFLICT (ID) DO UPDATE SET " \
+                             f"HISTORY = '{history}', " \
+                             f"MESSAGES = '{messages}', " \
+                             f"FIRST_NAME = '{item['first_name']}', " \
+                             f"LAST_NAME = '{item['last_name']}', " \
+                             f"USER_NAME = '{item['user_name']}' " \
+                             f"WHERE ID = {key} "
+                await cursor.execute(sql_record)
+            await self.conn.commit()
+
     async def delete_user(self, id_user: int):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
