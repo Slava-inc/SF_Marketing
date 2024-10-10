@@ -35,6 +35,12 @@ class BotMessage(Bot):
         Bot.__init__(self, token, **kw)
         self.logo_main_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
                                                        os.environ["MAIN_MENU_PNG"]))
+        self.logo_goal_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                                                       os.environ["GOAL_MENU_PNG"]))
+        self.logo_outlay_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                                                         os.environ["OUTLAY_MENU_PNG"]))
+        self.logo_income_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                                                         os.environ["INCOME_MENU_PNG"]))
 
     async def delete_messages_chat(self, chat_id: int, list_message: list):
         try:
@@ -131,8 +137,8 @@ class DispatcherMessage(Dispatcher):
         self.scheduler = AsyncIOScheduler()
         self.functions = Function(self.bot, self)
         self.execute = Execute()
-        self.queues = QueuesMedia(self)
         self.queues_message = QueuesMessage()
+        self.queues = QueuesMedia(self)
         self.dict_user = self.functions.dict_user
         self.startup.register(self.on_startup)
         self.shutdown.register(self.on_shutdown)
@@ -156,9 +162,8 @@ class DispatcherMessage(Dispatcher):
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
                 print("audio")
             elif message.content_type == "document":
-                task = asyncio.create_task(self.functions.get_document(message,
-                                                                       self.dict_user[
-                                                                           message.from_user.id]['messages']))
+                task = asyncio.create_task(self.functions.get_document(
+                    message,self.dict_user[message.from_user.id]['messages']))
                 await self.queues.start(message.from_user.id, task)
             elif message.content_type == "photo":
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
@@ -202,6 +207,12 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{callback.from_user.id}_task_income')
             await self.queues_message.start(task)
 
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_goal'))
+        async def send_add_goal_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_add_goal(callback))
+            task.set_name(f'{callback.from_user.id}_task_add_goal')
+            await self.queues_message.start(task)
+
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))
         async def send_return_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_back(callback))
@@ -209,16 +220,28 @@ class DispatcherMessage(Dispatcher):
             await self.queues_message.start(task)
 
     async def on_startup(self):
-        await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot запущен!')
+        # Отправляем сообщение администратору о том, что бот был запущен
+        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
+            int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
+        answer = await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot запущен!')
+        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'].append(str(answer.message_id))
+        self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
+        await self.execute.set_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
         self.scheduler_send_news()
 
     def scheduler_send_news(self):
+        # Добавляем задачу отправки полезных советов в scheduler каждый день в 10:00
         self.scheduler.add_job(self.functions.newsletter, 'cron', day_of_week='mon-sun', hour=10, minute=00,
                                end_date='2025-01-30')
 
     async def on_shutdown(self):
         # Отправляем сообщение администратору о том, что бот был остановлен
-        await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot остановлен!')
+        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
+            int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
+        answer = await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot остановлен!')
+        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'].append(str(answer.message_id))
+        self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
+        await self.execute.set_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
         await self.bot.session.close()
 
 
