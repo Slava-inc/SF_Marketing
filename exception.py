@@ -1,6 +1,8 @@
 import logging
+import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import certifi
 from aiosmtplib import SMTP
 import os
 
@@ -15,9 +17,10 @@ async def send_mail(subject_letter: str, to_mail: str, message_text: str):
     message["Subject"] = subject_letter
     message.attach(MIMEText(f"<html><body>{message_text}</body></html>", "html", "utf-8"))
 
-    smtp_client = SMTP(hostname="smtp.mail.ru", port=465, use_tls=True)
+    smtp_client = SMTP(hostname="smtp.yandex.ru", port=465, use_tls=True)
+
     async with smtp_client:
-        await smtp_client.login(os.environ["EMAIL"], os.environ["PASSWORD"])
+        await smtp_client.login(os.environ["EMAIL"], os.environ["PASSWORD_SMTP"])
         await smtp_client.send_message(message)
 
 
