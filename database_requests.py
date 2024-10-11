@@ -318,6 +318,7 @@ class Execute:
                 print(my_table)
                 print(f"В базе {len(row_table)} целей")
 
+
     @staticmethod
     def quote(request) -> str:
         return f"'{str(request)}'"
