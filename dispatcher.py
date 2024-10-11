@@ -12,6 +12,7 @@ from aiogram.filters.command import Command
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 from aiogram.enums.parse_mode import ParseMode
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,6 +23,7 @@ class BotTelegram:
         self.dispatcher = DispatcherMessage(self.bot)
 
     async def start_dispatcher(self):
+        self.dispatcher.scheduler.start()
         await self.dispatcher.start_polling(self.bot)
 
     def run(self):
@@ -31,6 +33,14 @@ class BotTelegram:
 class BotMessage(Bot):
     def __init__(self, token, **kw):
         Bot.__init__(self, token, **kw)
+        self.logo_main_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                                                       os.environ["MAIN_MENU_PNG"]))
+        self.logo_goal_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                                                       os.environ["GOAL_MENU_PNG"]))
+        self.logo_outlay_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                                                         os.environ["OUTLAY_MENU_PNG"]))
+        self.logo_income_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                                                         os.environ["INCOME_MENU_PNG"]))
 
     async def delete_messages_chat(self, chat_id: int, list_message: list):
         try:
@@ -54,7 +64,7 @@ class BotMessage(Bot):
     async def edit_head_keyboard(self, chat_message: int, id_message: int, keyboard: InlineKeyboardMarkup):
         return await self.edit_message_reply_markup(chat_id=chat_message, message_id=id_message, reply_markup=keyboard)
 
-    async def send_message_start(self, chat_id: int, keyboard: InlineKeyboardMarkup, text_message: str):
+    async def send_message_news(self, chat_id: int, keyboard: InlineKeyboardMarkup, text_message: str):
         return await self.send_message(chat_id=chat_id, text=self.format_text(text_message),
                                        parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
@@ -124,19 +134,20 @@ class DispatcherMessage(Dispatcher):
     def __init__(self, parent, **kw):
         Dispatcher.__init__(self, **kw)
         self.bot = parent
-        self.functions = Function(parent)
+        self.scheduler = AsyncIOScheduler()
+        self.functions = Function(self.bot, self)
         self.execute = Execute()
-        self.timer = TimerClean(self, 30)
-        self.queues = QueuesMedia(self)
         self.queues_message = QueuesMessage()
+        self.queues = QueuesMedia(self)
         self.dict_user = self.functions.dict_user
+        self.startup.register(self.on_startup)
+        self.shutdown.register(self.on_shutdown)
 
         @self.message(Command("start"))
         async def cmd_start(message: Message):
-            task = asyncio.create_task(self.functions.task_command_start(message))
+            task = asyncio.create_task(self.functions.show_command_start(message))
             task.set_name(f'{message.from_user.id}_task_command_start')
             await self.queues_message.start(task)
-            await self.timer.start(message.from_user.id)
 
         @self.message(F.from_user.id.in_(self.dict_user) & F.content_type.in_({
             "text", "audio", "document", "photo", "sticker", "video", "video_note", "voice", "location", "contact",
@@ -151,11 +162,9 @@ class DispatcherMessage(Dispatcher):
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
                 print("audio")
             elif message.content_type == "document":
-                task = asyncio.create_task(self.functions.get_document(message,
-                                                                       self.dict_user[
-                                                                           message.from_user.id]['messages']))
+                task = asyncio.create_task(self.functions.get_document(
+                    message,self.dict_user[message.from_user.id]['messages']))
                 await self.queues.start(message.from_user.id, task)
-                await self.timer.start(message.from_user.id)
             elif message.content_type == "photo":
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
                 print("photo")
@@ -180,54 +189,60 @@ class DispatcherMessage(Dispatcher):
             else:
                 await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
 
-        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'call_back1'))
-        async def send_catalog_message(callback: CallbackQuery):
-            await self.bot.delete_messages_chat(callback.message.chat.id, [callback.message.message_id])
-            print("call_back1")
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'goal'))
+        async def send_goal_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_goal(callback))
+            task.set_name(f'{callback.from_user.id}_task_goal')
+            await self.queues_message.start(task)
 
-        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'call_back2'))
-        async def remove_dealer_price(callback: CallbackQuery):
-            await self.bot.delete_messages_chat(callback.message.chat.id, [callback.message.message_id])
-            print("call_back2")
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'outlay'))
+        async def send_outlay_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_outlay(callback))
+            task.set_name(f'{callback.from_user.id}_task_outlay')
+            await self.queues_message.start(task)
 
-        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'call_back3'))
-        async def show_dealer_price(callback: CallbackQuery):
-            await self.bot.delete_messages_chat(callback.message.chat.id, [callback.message.message_id])
-            print("call_back3")
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'income'))
+        async def send_income_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_income(callback))
+            task.set_name(f'{callback.from_user.id}_task_income')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_goal'))
+        async def send_add_goal_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_add_goal(callback))
+            task.set_name(f'{callback.from_user.id}_task_add_goal')
+            await self.queues_message.start(task)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))
         async def send_return_message(callback: CallbackQuery):
-            task = asyncio.create_task(self.functions.task_back(callback))
+            task = asyncio.create_task(self.functions.show_back(callback))
             task.set_name(f'{callback.from_user.id}_task_back')
             await self.queues_message.start(task)
-            await self.timer.start(callback.from_user.id)
 
+    async def on_startup(self):
+        # Отправляем сообщение администратору о том, что бот был запущен
+        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
+            int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
+        answer = await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot запущен!')
+        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'].append(str(answer.message_id))
+        self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
+        await self.execute.set_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
+        self.scheduler_send_news()
 
-class TimerClean:
-    def __init__(self, parent, second: int):
-        self.parent = parent
-        self._clean_time = second
-        self.t = {}
+    def scheduler_send_news(self):
+        # Добавляем задачу отправки полезных советов в scheduler каждый день в 10:00
+        self.scheduler.add_job(self.functions.newsletter, 'cron', day_of_week='mon-sun', hour=10, minute=00,
+                               end_date='2025-01-30')
 
-    async def start(self, user: int):
-        if user in self.t.keys():
-            self.t[user].cancel()
-            self.t.pop(user)
-            self.t[user] = asyncio.create_task(self.clean_chat(user))
-            await self.t[user]
-        else:
-            self.t[user] = asyncio.create_task(self.clean_chat(user))
-            await self.t[user]
-
-    async def clean_chat(self, user: int):
-        await asyncio.sleep(self._clean_time)
-        id_message = await self.parent.functions.start_for_timer(user)
-        if id_message:
-            await self.clean_timer(user)
-
-    async def clean_timer(self, user: int):
-        self.t.pop(user)
-        await self.start(user)
+    async def on_shutdown(self):
+        # Отправляем сообщение администратору о том, что бот был остановлен
+        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
+            int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
+        answer = await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot остановлен!')
+        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'].append(str(answer.message_id))
+        self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
+        await self.execute.set_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
+        await self.bot.session.close()
 
 
 class QueuesMedia:

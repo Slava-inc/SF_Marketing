@@ -7,24 +7,54 @@ class KeyBoardBot:
         self.execute = Execute()
 
     @staticmethod
-    async def get_first_keyboard() -> dict:
-        button_first_keyboard = {'goal': 'Поставить цель 🎯',
-                                 'outlay': 'Расходы 🧮',
-                                 'income': 'Доходы 💰,',
-                                 'category': 'Категории расходов 📋'}
+    async def get_first_menu(history: list) -> dict:
+        if len(history) > 1:
+            button_first_keyboard = {'goal': 'Цели 🎯',
+                                     'outlay': 'Расходы 🧮',
+                                     'income': 'Доходы 💰',
+                                     'back': 'Назад 🔙'}
+        else:
+            button_first_keyboard = {'goal': 'Цели 🎯',
+                                     'outlay': 'Расходы 🧮',
+                                     'income': 'Доходы 💰'}
         return button_first_keyboard
 
     @staticmethod
-    async def get_outlay(known_category: bool) -> dict:
+    async def get_goal_menu():
+        button_goal_keyboard = {'add_goal': 'Добавить новую цель ➕',
+                                'show_goal': 'Показать список целей 👀',
+                                'back': 'Назад 🔙'}
+        return button_goal_keyboard
+
+    @staticmethod
+    async def get_outlay_menu():
+        button_outlay_keyboard = {'add_outlay': 'Добавить новые расходы ➕',
+                                  'show_outlay': 'Показать список расходов 👀',
+                                  'analytic_outlay': 'Аналитика расходов 📊',
+                                  'change_category_outlay': 'Изменить категории расходов ⚙',
+                                  'back': 'Назад 🔙'}
+        return button_outlay_keyboard
+
+    @staticmethod
+    async def get_income_menu():
+        button_income_keyboard = {'add_income': 'Добавить новые доходы ➕',
+                                  'show_income': 'Показать список доходов 👀',
+                                  'analytic_income': 'Аналитика доходов 📊',
+                                  'change_category_income': 'Изменить категории доходов ⚙',
+                                  'back': 'Назад 🔙'}
+        return button_income_keyboard
+
+    @staticmethod
+    async def get_keyboard_outlay(known_category: bool = True) -> dict:
         if known_category:
-            button_outlay_keyboard = {'goal': 'Изменить категорию 📋',
-                                      'outlay': 'Аналитика расходов 📊',
+            button_outlay_keyboard = {'change_category_outlay': 'Изменить категорию расходов ⚙',
+                                      'analytic_outlay': 'Аналитика расходов 📊',
                                       'back': 'Назад 🔙'}
         else:
             button_outlay_keyboard = {'auto': 'Автомобиль 📋',
                                       'business': 'Бизнес  📋',
-                                      'souvenir': 'Благотворительность, помощь, подарки 📋',
-                                      'home_appliances': 'Бытовая техника и расходные материалы 📋',
+                                      'souvenir': 'Подарки 📋',
+                                      'home_appliances': 'Бытовая техника 📋',
                                       'children': 'Дети 📋',
                                       'pets': 'Домашние животные 📋',
                                       'health ': 'Здоровье и красота 📋',
@@ -40,13 +70,14 @@ class KeyBoardBot:
                                       'transport': 'Транспорт 📋',
                                       'hobby': 'Хобби 📋',
                                       'connection': 'Связь и интернет ',
-                                      'goal': 'Добавить категорию 📋',
-                                      'outlay': 'Аналитика расходов 📊',
+                                      'add_category_outlay': 'Добавить свою категорию ➕',
+                                      'delete_category_outlay': 'Удалить категорию 🗑️',
+                                      'analytic_outlay': 'Аналитика расходов 📊',
                                       'back': 'Назад 🔙'}
         return button_outlay_keyboard
 
     @staticmethod
-    async def text_for_timer() -> str:
+    async def text_for_news() -> str:
         text = ['Не бывает статей расходов, которые не были бы важны для вас. Чтобы тратить меньше следует '
                 'сокращать каждую статью пропорционально друг другу, т.е. вычитывать средства из каждой статьи '
                 'в одинаковом процентном соотношении.',
