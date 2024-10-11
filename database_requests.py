@@ -1,4 +1,4 @@
-# import asyncio
+import asyncio
 import json
 import logging
 import aiosqlite
@@ -103,14 +103,14 @@ class Execute:
                              'last_name': row_table[3], 'user_name': row_table[4]}
             return dict_user
 
-    async def set_user(self, id_user: int, dict_info_user: dict):
+    async def update_user(self, id_user: int, dict_info_user: dict):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
-                await self.execute_set_user(id_user, dict_info_user)
+                await self.execute_update_user(id_user, dict_info_user)
         except Exception as e:
-            await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            await send_message('Ошибка запроса в методе update_user', os.environ["EMAIL"], str(e))
 
-    async def execute_set_user(self, id_user: int, dict_info_user: dict):
+    async def execute_update_user(self, id_user: int, dict_info_user: dict):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
             history = await self.get_str(dict_info_user['history'])
             messages = await self.get_str(dict_info_user['messages'])
@@ -128,14 +128,14 @@ class Execute:
             await cursor.execute(sql_record)
             await self.conn.commit()
 
-    async def set_all_users(self, dict_user: dict):
+    async def update_all_users(self, dict_user: dict):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
-                await self.execute_set_all_users(dict_user)
+                await self.execute_update_all_users(dict_user)
         except Exception as e:
-            await send_message('Ошибка запроса в методе set_all_users', os.environ["EMAIL"], str(e))
+            await send_message('Ошибка запроса в методе update_all_users', os.environ["EMAIL"], str(e))
 
-    async def execute_set_all_users(self, dict_users: dict):
+    async def execute_update_all_users(self, dict_users: dict):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
             for key, item in dict_users.items():
                 history = await self.get_str(item['history'])
@@ -223,15 +223,15 @@ class Execute:
     async def execute_check_new_goal(self, user_id: int) -> int:
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
             sql_check_new_goal = f"SELECT ROWID " \
-                            f"FROM GOAL " \
-                            f"WHERE USER_ID = '{user_id}' AND STATUS_GOAL = 'new' "
+                                 f"FROM GOAL " \
+                                 f"WHERE USER_ID = '{user_id}' AND STATUS_GOAL = 'new' "
             await cursor.execute(sql_check_new_goal)
             row_table = await cursor.fetchone()
             if row_table is None:
-                dict_user = 0
+                row_id = 0
             else:
-                dict_user = row_table[0]
-            return dict_user
+                row_id = row_table[0]
+            return row_id
 
     async def insert_goal(self, user_id: int, dict_info_goal: dict) -> int:
         try:
@@ -249,7 +249,8 @@ class Execute:
                               f"VALUES('{user_id}', '{dict_info_goal['goal_name']}', '{dict_info_goal['sum_goal']}', " \
                               f"'{dict_info_goal['income_user']}', '{dict_info_goal['income_frequency']}', " \
                               f"'{dict_info_goal['duration']}', '{str_reminder_days}', " \
-                              f"'{dict_info_goal['reminder_time']}', '{dict_info_goal['data_finish']}', 'new') "
+                              f"'{dict_info_goal['reminder_time']}', '{dict_info_goal['data_finish']}', " \
+                              f"'{dict_info_goal['status_goal']}') "
             await cursor.execute(sql_insert_goal)
             await self.conn.commit()
             return cursor.lastrowid
@@ -324,11 +325,11 @@ class Execute:
 
     @staticmethod
     async def get_list(string: str) -> list:
-        return string.split()
+        return string.split('///')
 
     @staticmethod
     async def get_str(list_item: list) -> str:
-        return ' '.join(list_item)
+        return '///'.join(list_item)
 
     @staticmethod
     async def get_dict_reminder_days(string: str) -> dict:
