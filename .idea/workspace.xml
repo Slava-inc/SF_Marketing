@@ -4,7 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a3a2aafe-6649-4c1c-9280-caeaad535ee9" name="Changes" comment="Commit 202410101502">
+    <list default="true" id="a3a2aafe-6649-4c1c-9280-caeaad535ee9" name="Changes" comment="Commit 202410111827">
+      <change afterPath="$PROJECT_DIR$/scheduler_reminders.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/database_requests.py" beforeDir="false" afterPath="$PROJECT_DIR$/database_requests.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dispatcher.py" beforeDir="false" afterPath="$PROJECT_DIR$/dispatcher.py" afterDir="false" />
@@ -127,10 +128,32 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="scheduler_reminders" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SFMarketing" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scheduler_reminders.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
         <item itemvalue="Python.main" />
         <item itemvalue="Python.database_requests" />
+        <item itemvalue="Python.scheduler_reminders" />
         <item itemvalue="Python.edit_pdf" />
       </list>
     </recent_temporary>
@@ -210,7 +233,14 @@
       <option name="project" value="LOCAL" />
       <updated>1728561777348</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Commit 202410111827">
+      <created>1728660432031</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1728660432031</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -234,6 +264,7 @@
     <MESSAGE value="Commit 202410082026" />
     <MESSAGE value="Commit 202410091416" />
     <MESSAGE value="Commit 202410101502" />
-    <option name="LAST_COMMIT_MESSAGE" value="Commit 202410101502" />
+    <MESSAGE value="Commit 202410111827" />
+    <option name="LAST_COMMIT_MESSAGE" value="Commit 202410111827" />
   </component>
 </project>

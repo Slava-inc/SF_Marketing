@@ -5,6 +5,7 @@ import os
 import datetime
 from functions import Function
 from database_requests import Execute
+from scheduler_reminders import Reminders
 from aiogram import F
 from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramBadRequest
@@ -12,7 +13,6 @@ from aiogram.filters.command import Command
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 from aiogram.enums.parse_mode import ParseMode
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logging.basicConfig(level=logging.INFO)
 
@@ -134,11 +134,11 @@ class DispatcherMessage(Dispatcher):
     def __init__(self, parent, **kw):
         Dispatcher.__init__(self, **kw)
         self.bot = parent
-        self.scheduler = AsyncIOScheduler()
         self.functions = Function(self.bot, self)
         self.execute = Execute()
         self.queues_message = QueuesMessage()
         self.queues = QueuesMedia(self)
+        self.scheduler = Reminders(self, self.functions, self.functions.keyboard)
         self.dict_user = self.functions.dict_user
         self.digit = {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '0': 0}
         self.startup.register(self.on_startup)
@@ -220,49 +220,76 @@ class DispatcherMessage(Dispatcher):
             await self.queues_message.start(task)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.in_(self.digit)))
-        async def send_return_message(callback: CallbackQuery):
-            task = asyncio.create_task(self.functions.show_digit(callback))
+        async def send_digit_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_change(callback))
             task.set_name(f'{callback.from_user.id}_task_digit')
             await self.queues_message.start(task)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'minus'))
-        async def send_return_message(callback: CallbackQuery):
+        async def send_minus_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_minus(callback))
             task.set_name(f'{callback.from_user.id}_task_minus')
             await self.queues_message.start(task)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'plus'))
-        async def send_return_message(callback: CallbackQuery):
+        async def send_plus_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_plus(callback))
             task.set_name(f'{callback.from_user.id}_task_plus')
             await self.queues_message.start(task)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'delete'))
-        async def send_return_message(callback: CallbackQuery):
+        async def send_delete_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_delete(callback))
             task.set_name(f'{callback.from_user.id}_task_delete')
             await self.queues_message.start(task)
 
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_sum_goal'))
+        async def send_done_sum_goal_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_done_sum_goal(callback))
+            task.set_name(f'{callback.from_user.id}_task_done_sum_goal')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_income_user'))
+        async def send_done_income_user_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_done_income_user(callback))
+            task.set_name(f'{callback.from_user.id}_task_done_income_user')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_income_frequency'))
+        async def send_done_income_frequency_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_done_income_frequency(callback))
+            task.set_name(f'{callback.from_user.id}_task_done_income_frequency')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_duration'))
+        async def send_done_duration_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_done_duration(callback))
+            task.set_name(f'{callback.from_user.id}_task_done_duration')
+            await self.queues_message.start(task)
+
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))
-        async def send_return_message(callback: CallbackQuery):
+        async def send_back_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_back(callback))
             task.set_name(f'{callback.from_user.id}_task_back')
             await self.queues_message.start(task)
 
     async def on_startup(self):
-        # Отправляем сообщение администратору о том, что бот был запущен
         self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
             int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
         answer = await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot запущен!')
         self.dict_user[int(os.environ["ADMIN_ID"])]['messages'].append(str(answer.message_id))
         self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
         await self.execute.update_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
-        self.scheduler_send_news()
+        await self.scheduler_install_reminders()
 
-    def scheduler_send_news(self):
-        # Добавляем задачу отправки полезных советов в scheduler каждый день в 10:00
-        self.scheduler.add_job(self.functions.newsletter, 'cron', day_of_week='mon-sun', hour=10, minute=00,
-                               end_date='2025-01-30')
+    async def scheduler_install_reminders(self):
+        dict_current_goal = await self.execute.get_current_goal
+        if len(dict_current_goal) != 0:
+            for key, item in dict_current_goal.items():
+                await self.scheduler.add_new_reminder(key, item)
+        if len(self.dict_user) != 0:
+            for user_id in self.dict_user.keys():
+                await self.scheduler.add_newsletter(user_id)
 
     async def on_shutdown(self):
         # Отправляем сообщение администратору о том, что бот был остановлен
