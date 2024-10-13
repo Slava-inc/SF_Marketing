@@ -127,7 +127,7 @@ class KeyBoardBot:
         return text
 
     @staticmethod
-    async def get_calculater():
+    async def get_calculater() -> dict:
         calculater = {'1': '1⃣', '2': '2⃣', '3': '3⃣',
                       '4': '4⃣', '5': '5⃣', '6': '6⃣',
                       '7': '7⃣', '8': '8️⃣', '9': '9⃣',
@@ -140,3 +140,9 @@ class KeyBoardBot:
         cleaner = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
         clean_text = re.sub(cleaner, '', text_message)
         return f'<b>{clean_text}</b>'
+
+    @staticmethod
+    async def get_weekday() -> dict:
+        dict_weekday = {'MON': 'Понедельник', 'TUE': 'Вторник', 'WED': 'Среда', 'THU': 'Четверг', 'FRI': 'Пятница',
+                        'SAT': 'Суббота', 'SUN': 'Воскресенье', 'back': 'Назад 🔙'}
+        return dict_weekday

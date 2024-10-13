@@ -27,6 +27,7 @@ class Function:
 
     async def show_back(self, call_back: CallbackQuery):
         previous_history = self.dict_user[call_back.from_user.id]['history'].pop()
+        print(self.dict_user[call_back.from_user.id]['history'][-1])
         if self.dict_user[call_back.from_user.id]['history'][-1] == 'start':
             await self.return_start(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'goal':
@@ -734,7 +735,7 @@ class Function:
                f"{self.format_text('Пожалуйста, укажите сколько раз в месяц Вы получаете доход.')}\n" \
                f"Количество поступлений в месяц: {self.format_text(frequency)}"
         if back_history is not None:
-            if back_history == 'add_duration':
+            if back_history == 'add_income_frequency':
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
                                                  self.build_keyboard(keyboard_calculater, 3, button_done))
@@ -772,7 +773,7 @@ class Function:
                f"{self.format_text('Через сколько месяцев ты хочешь накопить эту сумму?')}\n" \
                f"Срок достижения цели: {self.format_text(duration)} мес."
         if back_history is not None:
-            if back_history == 'add_reminder_days':
+            if back_history == 'add_duration':
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
                                                  self.build_keyboard(keyboard_calculater, 3, button_done))
@@ -789,6 +790,76 @@ class Function:
                                              self.build_keyboard(keyboard_calculater, 3, button_done))
             self.dict_user[call_back.from_user.id]['history'].append("add_income_frequency")
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_done_duration(self, call_back: CallbackQuery, back_history: str = None):
+        row_id = await self.execute.check_new_goal(call_back.from_user.id)
+        name_goal = self.dict_goal[row_id]['goal_name']
+        sum_goal = str(int(self.dict_goal[row_id]['sum_goal']))
+        income_user = str(int(self.dict_goal[row_id]['income_user']))
+        income_frequency = str(int(self.dict_goal[row_id]['income_frequency']))
+        duration = str(int(self.dict_goal[row_id]['duration']))
+        if back_history is None:
+            monthly_payment = await self.check_duration(call_back, self.dict_goal[row_id])
+            if not monthly_payment:
+                duration = '0'
+                self.dict_goal[row_id]['duration'] = int(duration)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_duration': 'Готово ✅'}
+                text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                       f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                       f"Ваш доход: {self.format_text(income_user)} ₽\n" \
+                       f"Количество поступлений: {self.format_text(income_frequency)}\n" \
+                       f"{self.format_text('Через сколько месяцев ты хочешь накопить эту сумму?')}\n" \
+                       f"Срок достижения цели: {self.format_text(duration)} мес."
+                try:
+                    await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                     self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                     self.build_keyboard(keyboard_calculater, 3, button_done))
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+                except TelegramBadRequest:
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+            else:
+                print('Прошли проверку')
+                weekday = ''
+                keyboard_weekday = await self.keyboard.get_weekday()
+                button_done = {'done_reminder_days': 'Готово ✅'}
+                text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                       f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                       f"Ваш доход: {self.format_text(income_user)} ₽\n" \
+                       f"Количество поступлений: {self.format_text(income_frequency)}\n" \
+                       f"{self.format_text('Через сколько месяцев ты хочешь накопить эту сумму?')}\n" \
+                       f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
+                       f"Давай установим напоминание, о дне в который мы будем откладывать деньги.\n" \
+                       f"Дни напоминания о цели: {weekday}"
+                await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                 self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_weekday, 3, button_done))
+                self.dict_user[call_back.from_user.id]['history'].append("add_duration")
+                await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        else:
+            weekday = await self.get_str_weekday(self.dict_goal[row_id]['reminder_days'])
+            keyboard_weekday = await self.keyboard.get_weekday()
+            button_done = {'done_reminder_days': 'Готово ✅'}
+            text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                   f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                   f"Ваш доход: {self.format_text(income_user)} ₽\n" \
+                   f"Количество поступлений: {self.format_text(income_frequency)}\n" \
+                   f"{self.format_text('Через сколько месяцев ты хочешь накопить эту сумму?')}\n" \
+                   f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
+                   f"Давай установим напоминание, о дне в который мы будем откладывать деньги.\n" \
+                   f"Дни напоминания о цели: {weekday}"
+            if back_history == 'add_reminder_time':
+                await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                 self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_weekday, 3, button_done))
+            else:
+                answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                                   self.build_keyboard(keyboard_weekday, 3, button_done),
+                                                   self.bot.logo_goal_menu)
+                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
         return True
 
     async def get_document(self, message: Message, list_messages: list):
@@ -820,6 +891,37 @@ class Function:
         arr_message = self.add_message_user(list_messages, str(message.message_id))
         await self.bot.delete_messages_chat(message.chat.id, arr_message[1:])
         return video_info
+
+    async def check_duration(self, call_back: CallbackQuery, dict_info_goal: dict):
+        monthly_payment, total_income = await self.calculate(dict_info_goal['sum_goal'], dict_info_goal['income_user'],
+                                                             dict_info_goal['income_frequency'],
+                                                             dict_info_goal['duration'])
+        if monthly_payment >= (total_income / 2):
+            await self.bot.alert_message(call_back.id, f"Достигнуть цели {dict_info_goal['goal_name']}, "
+                                                       f"в размере {str(int(dict_info_goal['sum_goal']))} рублей, "
+                                                       f"за {str(int(dict_info_goal['duration']))} месяцев, "
+                                                       f"будет очень сложно")
+            return False
+        else:
+            return True
+
+    async def get_str_weekday(self, dict_reminder_days: dict) -> str:
+        dict_weekday = await self.keyboard.get_weekday()
+        list_weekday = []
+        for key, item in dict_reminder_days.items():
+            if item:
+                list_weekday.append(dict_weekday[key])
+        if len(list_weekday) == 0:
+            weekday = ''
+        else:
+            weekday = ' ,'.join(list_weekday)
+        return weekday
+
+    @staticmethod
+    async def calculate(sum_goal: float, income_user: float, income_frequency: int, duration: int):
+        total_income = income_user * income_frequency
+        monthly_payment = sum_goal / duration
+        return monthly_payment, total_income
 
     @staticmethod
     async def check_text(string_text: str) -> str:
