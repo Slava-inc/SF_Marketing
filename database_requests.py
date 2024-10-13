@@ -344,6 +344,45 @@ class Execute:
                 print(my_table)
                 print(f"В базе {len(row_table)} целей")
 
+    async def set_category_income(self, id: int, dict_info: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_category_income(id, dict_info)
+        except Exception as e:
+            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            print(str(e))
+
+    async def execute_set_category_income(self, id: int, dict_info: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+
+            sql_record = f"INSERT INTO CATEGORY_INCOME " \
+                         f"(ID, USER_ID, NAME) " \
+                         f"VALUES({id}, " \
+                         f"{dict_info['user_id']}, " \
+                         f"'{dict_info['name']}') " 
+            await cursor.execute(sql_record)
+            await self.conn.commit() 
+
+    async def set_category_outlay(self, id: int, dict_info: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_category_outlay(id, dict_info)
+        except Exception as e:
+            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            print(str(e))
+
+    async def execute_set_category_outlay(self, id: int, dict_info: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+
+            sql_record = f"INSERT INTO CATEGORY_OUTLAY " \
+                         f"(ID, USER_ID, NAME) " \
+                         f"VALUES({id}, " \
+                         f"{dict_info['user_id']}, " \
+                         f"'{dict_info['name']}') " 
+            await cursor.execute(sql_record)
+            await self.conn.commit()   
+
+            
     @staticmethod
     def quote(request) -> str:
         return f"'{str(request)}'"
