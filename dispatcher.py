@@ -221,13 +221,14 @@ class DispatcherMessage(Dispatcher):
 
     async def on_startup(self):
         # Отправляем сообщение администратору о том, что бот был запущен
-        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
-            int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
-        answer = await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot запущен!')
-        self.dict_user[int(os.environ["ADMIN_ID"])]['messages'].append(str(answer.message_id))
-        self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
-        await self.execute.set_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
-        self.scheduler_send_news()
+        # self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
+        #     int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
+        # answer = await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot запущен!')
+        # self.dict_user[int(os.environ["ADMIN_ID"])]['messages'].append(str(answer.message_id))
+        # self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
+        # await self.execute.update_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
+        # self.scheduler_send_news()
+        pass
 
     def scheduler_send_news(self):
         # Добавляем задачу отправки полезных советов в scheduler каждый день в 10:00
