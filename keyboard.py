@@ -1,4 +1,5 @@
 import random
+import re
 from database_requests import Execute
 
 
@@ -117,3 +118,31 @@ class KeyBoardBot:
                 'Лучше разумно распределить деньги между различными активами и инструментами с разным уровнем риска. '
                 'Такой подход поможет сбалансировать доход и минимизировать потери.']
         return random.choice(text)
+
+    async def text_for_reminder(self, dict_info_goal: dict) -> str:
+        text = f"Напоминаем про цель, которую Вы перед собой поставили:\n" \
+               f"Наименование цели: {self.format_text(dict_info_goal['goal_name'])}\n" \
+               f"Сумма цели: {self.format_text(str(int(dict_info_goal['sum_goal'])))} ₽\n" \
+               f"Дата завершения: {self.format_text(dict_info_goal['data_finish'])}"
+        return text
+
+    @staticmethod
+    async def get_calculater() -> dict:
+        calculater = {'1': '1⃣', '2': '2⃣', '3': '3⃣',
+                      '4': '4⃣', '5': '5⃣', '6': '6⃣',
+                      '7': '7⃣', '8': '8️⃣', '9': '9⃣',
+                      'minus': '➖', '0': '0️⃣', 'plus': '➕',
+                      'back': 'Назад 🔙', 'delete': '⌫'}
+        return calculater
+
+    @staticmethod
+    def format_text(text_message: str) -> str:
+        cleaner = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
+        clean_text = re.sub(cleaner, '', text_message)
+        return f'<b>{clean_text}</b>'
+
+    @staticmethod
+    async def get_weekday() -> dict:
+        dict_weekday = {'MON': 'Понедельник', 'TUE': 'Вторник', 'WED': 'Среда', 'THU': 'Четверг', 'FRI': 'Пятница',
+                        'SAT': 'Суббота', 'SUN': 'Воскресенье', 'back': 'Назад 🔙'}
+        return dict_weekday
