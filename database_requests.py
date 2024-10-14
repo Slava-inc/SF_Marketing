@@ -409,6 +409,13 @@ class Execute:
             await cursor.execute(sql_record)
             await self.conn.commit()   
 
+    async def get_row_id(self, table_name):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_row_max = f"select seq from sqlite_sequence" \
+                             f"where name={table_name} "
+            await cursor.execute(sql_row_max)
+            max_id = await cursor.fetone()
+            return max_id + 1
             
     @staticmethod
     def quote(request) -> str:
