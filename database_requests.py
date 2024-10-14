@@ -13,8 +13,8 @@ logging.basicConfig(level=logging.INFO)
 
 class Execute:
     def __init__(self):
-        # self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
-        self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], "SF_marketing/db.sqlite")
+        self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
+        # self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], "SF_marketing/db.sqlite")
 
         self.conn = None
 
@@ -81,6 +81,7 @@ class Execute:
                 dict_user[item[0]] = {'history': list_history, 'messages': list_messages, 'first_name': item[3],
                                       'last_name': item[4], 'user_name': item[5]}
             return dict_user
+
     async def set_user(self, id: int, dict_info: dict):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
@@ -103,7 +104,6 @@ class Execute:
                             f"'{dict_info['user_name']}') "
             except Exception as e:
                 print(str(e))
-
             await cursor.execute(sql_record)
             await self.conn.commit() 
                                 
