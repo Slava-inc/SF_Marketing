@@ -60,6 +60,13 @@ class Function:
             this_bot = False
         return this_bot
 
+    async def show_ok(self, call_back: CallbackQuery):
+        self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+            call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'],
+            str(call_back.message.message_id), True)
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
     async def show_command_start(self, message: Message):
         check = await self.checking_bot(message)
         if check:
@@ -100,32 +107,26 @@ class Function:
         return True
 
     async def send_reminder(self, user_id: int, text_message: str):
-        back_button = {'back': 'Назад 🔙'}
+        ok_button = {'ок': 'OK 👌'}
         try:
-            answer = await self.bot.push_photo(user_id, text_message, self.build_keyboard(back_button, 1),
+            answer = await self.bot.push_photo(user_id, text_message, self.build_keyboard(ok_button, 1),
                                                self.bot.logo_main_menu)
             self.dict_user[user_id]['messages'].append(str(answer.message_id))
-            self.dict_user[user_id]['history'].append('start')
-            await self.execute.update_user(user_id, self.dict_user[user_id])
+            # self.dict_user[user_id]['history'].append('start')
         except TelegramForbiddenError:
-            await self.execute.delete_user(user_id)
             self.dict_user.pop(user_id)
-        return True
 
     async def send_recommendation(self, user_id, text_recommendation):
-        back_button = {'back': 'Назад 🔙'}
+        ok_button = {'ок': 'OK 👌'}
         try:
-            answer = await self.bot.push_photo(user_id, text_recommendation, self.build_keyboard(back_button, 1),
+            answer = await self.bot.push_photo(user_id, text_recommendation, self.build_keyboard(ok_button, 1),
                                                self.bot.logo_main_menu)
             self.dict_user[user_id]['messages'] = await self.delete_messages(user_id,
                                                                              self.dict_user[user_id]['messages'])
             self.dict_user[user_id]['messages'].append(str(answer.message_id))
-            self.dict_user[user_id]['history'].append('start')
-            await self.execute.update_user(user_id, self.dict_user[user_id])
+            # self.dict_user[user_id]['history'].append('start')
         except TelegramForbiddenError:
-            await self.execute.delete_user(user_id)
             self.dict_user.pop(user_id)
-        return True
 
     async def show_info_pdf(self, user_id: int, text_document: str):
         first_keyboard = await self.keyboard.get_first_menu(self.dict_user[user_id]['history'])
@@ -251,10 +252,7 @@ class Function:
             user_id = call_back.from_user.id
             row_id = await self.execute.check_new_goal(user_id)
             name_goal = self.dict_goal[row_id]['goal_name']
-            if back_history == 'add_sum_goal':
-                amount = '0'
-            else:
-                amount = str(int(self.dict_goal[row_id]['sum_goal']))
+            amount = str(int(self.dict_goal[row_id]['sum_goal']))
         else:
             user_id = message.from_user.id
             row_id = await self.execute.check_new_goal(user_id)
@@ -699,7 +697,7 @@ class Function:
                f"{self.format_text('Укажите Ваш доход 💰')} - введите доход в рублях.\n" \
                f"Ваш доход: {self.format_text(amount)} ₽"
         if back_history is not None:
-            if back_history == 'add_income_frequency':
+            if back_history == 'add_income_user':
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
                                                  self.build_keyboard(keyboard_calculater, 3, button_done))
@@ -820,7 +818,6 @@ class Function:
                 except TelegramBadRequest:
                     await self.execute.update_goal(row_id, self.dict_goal[row_id])
             else:
-                print('Прошли проверку')
                 weekday = ''
                 keyboard_weekday = await self.keyboard.get_weekday()
                 button_done = {'done_reminder_days': 'Готово ✅'}
@@ -828,9 +825,8 @@ class Function:
                        f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
                        f"Ваш доход: {self.format_text(income_user)} ₽\n" \
                        f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-                       f"{self.format_text('Через сколько месяцев ты хочешь накопить эту сумму?')}\n" \
                        f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-                       f"Давай установим напоминание, о дне в который мы будем откладывать деньги.\n" \
+                       f"Давайте установим, в какие дни недели получать напоминание о цели.\n" \
                        f"Дни напоминания о цели: {weekday}"
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -845,11 +841,10 @@ class Function:
                    f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
                    f"Ваш доход: {self.format_text(income_user)} ₽\n" \
                    f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-                   f"{self.format_text('Через сколько месяцев ты хочешь накопить эту сумму?')}\n" \
                    f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-                   f"Давай установим напоминание, о дне в который мы будем откладывать деньги.\n" \
+                   f"Давайте установим, в какие дни недели получать напоминание о цели.\n" \
                    f"Дни напоминания о цели: {weekday}"
-            if back_history == 'add_reminder_time':
+            if back_history == 'add_reminder_days':
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
                                                  self.build_keyboard(keyboard_weekday, 3, button_done))
@@ -896,7 +891,7 @@ class Function:
         monthly_payment, total_income = await self.calculate(dict_info_goal['sum_goal'], dict_info_goal['income_user'],
                                                              dict_info_goal['income_frequency'],
                                                              dict_info_goal['duration'])
-        if monthly_payment >= (total_income / 2):
+        if monthly_payment >= (total_income / 2) or int(dict_info_goal['duration']) == 0:
             await self.bot.alert_message(call_back.id, f"Достигнуть цели {dict_info_goal['goal_name']}, "
                                                        f"в размере {str(int(dict_info_goal['sum_goal']))} рублей, "
                                                        f"за {str(int(dict_info_goal['duration']))} месяцев, "
@@ -920,7 +915,10 @@ class Function:
     @staticmethod
     async def calculate(sum_goal: float, income_user: float, income_frequency: int, duration: int):
         total_income = income_user * income_frequency
-        monthly_payment = sum_goal / duration
+        if duration == 0:
+            monthly_payment = 0
+        else:
+            monthly_payment = sum_goal / duration
         return monthly_payment, total_income
 
     @staticmethod

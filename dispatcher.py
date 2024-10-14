@@ -267,6 +267,12 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{callback.from_user.id}_task_done_duration')
             await self.queues_message.start(task)
 
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'ок'))
+        async def send_back_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_ok(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_ok')
+            await self.queues_message.start(task)
+
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))
         async def send_back_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_back(callback))
@@ -288,10 +294,12 @@ class DispatcherMessage(Dispatcher):
             for key, item in dict_current_goal.items():
                 await self.scheduler.add_new_reminder(key, item)
         if len(self.dict_user) != 0:
+            text_recommendation = await self.functions.keyboard.text_for_news()
             for user_id in self.dict_user.keys():
-                await self.scheduler.add_newsletter(user_id)
+                await self.scheduler.add_newsletter(user_id, text_recommendation)
 
     async def on_shutdown(self):
+        await self.update_base_on_shutdown()
         # Отправляем сообщение администратору о том, что бот был остановлен
         self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
             int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
@@ -300,6 +308,15 @@ class DispatcherMessage(Dispatcher):
         self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
         await self.execute.update_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
         await self.bot.session.close()
+
+    async def update_base_on_shutdown(self):
+        relevant_dict_users = await self.execute.get_dict_user
+        for key, item in relevant_dict_users.items():
+            if key in self.dict_user.keys():
+                await self.execute.update_user(key, self.dict_user[key])
+            else:
+                await self.execute.delete_user(key)
+        print('База обновлена')
 
 
 class QueuesMedia:
