@@ -40,6 +40,7 @@ CATEGORY_OUTLAY
 ID integer PK
 USER_ID integer FK > USERS.ID
 NAME text
+GOAL_ID integer FK > GOAL.ID
 
 GOAL
 -
