@@ -95,16 +95,16 @@ class Execute:
                 sql_record = f"INSERT INTO USERS " \
                             f"(ID, USER_ID, HISTORY, MESSAGES, FIRST_NAME, LAST_NAME, USER_NAME) " \
                             f"VALUES({id}, " \
-                            f"{dict_info['user_id']}, " \
-                            f"{dict_info['history']}, " \
-                            f"{dict_info['messages']}, " \
-                            f"{dict_info['first_name']}, " \
-                            f"{dict_info['last_name']}, " \
+                            f"'{dict_info['user_id']}', " \
+                            f"'{dict_info['history']}', " \
+                            f"'{dict_info['messages']}', " \
+                            f"'{dict_info['first_name']}', " \
+                            f"'{dict_info['last_name']}', " \
                             f"'{dict_info['user_name']}') "
+
+                await cursor.execute(sql_record)
             except Exception as e:
                 print(str(e))
-
-            await cursor.execute(sql_record)
             await self.conn.commit() 
                                 
     async def get_user(self, id_user: int) -> dict:
