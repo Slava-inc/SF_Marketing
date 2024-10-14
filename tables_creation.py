@@ -5,6 +5,7 @@ from database_requests import Execute
 
 TABLES = [f"CREATE TABLE IF NOT EXISTS USERS ("
                                   f"ID INTEGER PRIMARY KEY, "
+                                  f"USER_ID INTEGER NOT NULL, "
                                   f"HISTORY text, "                                  
                                   f"MESSAGES  TEXT, "
                                   f"FIRST_NAME   TEXT, "
