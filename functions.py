@@ -3,7 +3,7 @@ import logging
 import re
 import os
 import phonenumbers
-from datetime import date, datetime
+from datetime import date
 from dateutil.relativedelta import relativedelta
 from keyboard import KeyBoardBot
 from database_requests import Execute
@@ -28,33 +28,36 @@ class Function:
         self.dict_goal = asyncio.run(self.execute.get_dict_goal)
 
     async def show_back(self, call_back: CallbackQuery):
-        previous_history = self.dict_user[call_back.from_user.id]['history'].pop()
-        print(self.dict_user[call_back.from_user.id]['history'][-1])
-        if self.dict_user[call_back.from_user.id]['history'][-1] == 'start':
+        try:
+            previous_history = self.dict_user[call_back.from_user.id]['history'].pop()
+            if self.dict_user[call_back.from_user.id]['history'][-1] == 'start':
+                await self.return_start(call_back)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'goal':
+                await self.show_goal(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'outlay':
+                await self.show_outlay(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'income':
+                await self.show_income(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_goal':
+                await self.show_add_goal(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_goal':
+                await self.show_add_name_goal(call_back.message, previous_history, call_back)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
+                await self.show_done_sum_goal(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_user':
+                await self.show_done_income_user(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_frequency':
+                await self.show_done_income_frequency(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
+                await self.show_done_duration(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_reminder_days':
+                await self.show_done_reminder_days(call_back, previous_history)
+            else:
+                await self.return_start(call_back)
+            return True
+        except IndexError:
             await self.return_start(call_back)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'goal':
-            await self.show_goal(call_back, previous_history)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'outlay':
-            await self.show_outlay(call_back, previous_history)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'income':
-            await self.show_income(call_back, previous_history)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_goal':
-            await self.show_add_goal(call_back, previous_history)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_goal':
-            await self.show_add_name_goal(call_back.message, previous_history, call_back)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
-            await self.show_done_sum_goal(call_back, previous_history)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_user':
-            await self.show_done_income_user(call_back, previous_history)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_frequency':
-            await self.show_done_income_frequency(call_back, previous_history)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
-            await self.show_done_duration(call_back, previous_history)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_reminder_days':
-            await self.show_done_reminder_days(call_back, previous_history)
-        else:
-            await self.return_start(call_back)
-        return True
+            return True
 
     async def checking_bot(self, message: Message):
         if message.from_user.is_bot:
@@ -116,7 +119,6 @@ class Function:
             answer = await self.bot.push_photo(user_id, text_message, self.build_keyboard(ok_button, 1),
                                                self.bot.logo_main_menu)
             self.dict_user[user_id]['messages'].append(str(answer.message_id))
-            # self.dict_user[user_id]['history'].append('start')
         except TelegramForbiddenError:
             self.dict_user.pop(user_id)
 
@@ -128,7 +130,6 @@ class Function:
             self.dict_user[user_id]['messages'] = await self.delete_messages(user_id,
                                                                              self.dict_user[user_id]['messages'])
             self.dict_user[user_id]['messages'].append(str(answer.message_id))
-            # self.dict_user[user_id]['history'].append('start')
         except TelegramForbiddenError:
             self.dict_user.pop(user_id)
 
@@ -1036,60 +1037,34 @@ class Function:
         sum_goal = str(int(self.dict_goal[row_id]['sum_goal']))
         income_user = str(int(self.dict_goal[row_id]['income_user']))
         income_frequency = str(int(self.dict_goal[row_id]['income_frequency']))
-        duration = str(int(self.dict_goal[row_id]['duration']))
+        duration = int(self.dict_goal[row_id]['duration'])
         monthly_payment = str(int(int(self.dict_goal[row_id]['sum_goal']) / int(duration)))
         weekday = await self.get_str_weekday(self.dict_goal[row_id]['reminder_days'])
         time_reminder = self.dict_goal[row_id]['reminder_time']
         current_date = date.today()
-        self.dict_goal[row_id]['data_finish'] =
-        first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
+        future_date = str(current_date + relativedelta(months=+duration))
+        self.dict_goal[row_id]['data_finish'] = future_date
+        data_in_message = f"{self.format_text(future_date.split('-')[2])}." \
+                          f"{self.format_text(future_date.split('-')[1])}." \
+                          f"{self.format_text(future_date.split('-')[0])} г."
+        self.dict_goal[row_id]['status_goal'] = 'current'
+        await self.execute.update_goal(row_id, self.dict_goal[row_id])
         text = f"{self.format_text('Добавлена новая цель:')}\n" \
                f"Наименование цели: {self.format_text(name_goal)}\n" \
                f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
                f"Ваш доход: {self.format_text(income_user)} ₽\n" \
                f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-               f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
+               f"Срок достижения цели: {self.format_text(str(duration))} мес.\n" \
                f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
                f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
-               f"Время напоминания о цели: {self.format_text(time_reminder)}"
-        if back_history is None:
-            if weekday == 'Не напоминать о цели':
-                time_reminder = 'Не напоминать о цели'
-            else:
-                time_reminder = '10:00'
-            self.dict_goal[row_id]['reminder_time'] = time_reminder
-            text_in_message = 'Установите, в какое время будет удобно получать напоминание о цели.'
-            text = f"Наименование цели: {self.format_text(name_goal)}\n" \
-                   f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
-                   f"Ваш доход: {self.format_text(income_user)} ₽\n" \
-                   f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-                   f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-                   f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
-                   f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
-                   f"{self.format_text(text_in_message)}\n" \
-                   f"Время напоминания о цели: {self.format_text(time_reminder)}"
-            await self.bot.edit_head_caption(text, call_back.message.chat.id,
-                                             self.dict_user[call_back.from_user.id]['messages'][-1],
-                                             self.build_keyboard(keyboard_time, 5, button_done))
-            self.dict_user[call_back.from_user.id]['history'].append("add_reminder_days")
-        else:
-            time_reminder = self.dict_goal[row_id]['reminder_time']
-            text_in_message = 'Установите, в какое время будет удобно получать напоминание о цели.'
-            text = f"Наименование цели: {self.format_text(name_goal)}\n" \
-                   f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
-                   f"Ваш доход: {self.format_text(income_user)} ₽\n" \
-                   f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-                   f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-                   f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
-                   f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
-                   f"{self.format_text(text_in_message)}\n" \
-                   f"Время напоминания о цели: {self.format_text(time_reminder)}"
-            answer = await self.bot.push_photo(call_back.message.chat.id, text,
-                                               self.build_keyboard(keyboard_time, 5, button_done),
-                                               self.bot.logo_goal_menu)
-            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+               f"Время напоминания о цели: {self.format_text(time_reminder)}\n" \
+               f"Цель рассчитана до: {self.format_text(data_in_message)}"
+        self.dict_user[call_back.from_user.id]['history'] = ['start']
+        first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
+        await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                         self.dict_user[call_back.from_user.id]['messages'][-1],
+                                         self.build_keyboard(first_keyboard, 1))
+        await self.dispatcher.scheduler.add_new_reminder(row_id, self.dict_goal[row_id])
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 

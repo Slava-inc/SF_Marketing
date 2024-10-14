@@ -1,4 +1,4 @@
-import asyncio
+# import asyncio
 import json
 import logging
 import aiosqlite
@@ -14,8 +14,6 @@ logging.basicConfig(level=logging.INFO)
 class Execute:
     def __init__(self):
         self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
-        # self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], "SF_marketing/db.sqlite")
-
         self.conn = None
 
     async def create_data_base(self):
