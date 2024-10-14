@@ -409,13 +409,23 @@ class Execute:
             await cursor.execute(sql_record)
             await self.conn.commit()   
 
-    async def get_row_id(self, table_name):
+    async def get_row_id (self, table_name: str):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_row_id(table_name)
+        except Exception as e:
+            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            print(str(e))
+
+    async def execute_get_row_id(self, table_name):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
-            sql_row_max = f"select seq from sqlite_sequence" \
-                             f"where name={table_name} "
+            sql_row_max = f"SELECT MAX(id) FROM {table_name}"
             await cursor.execute(sql_row_max)
-            max_id = await cursor.fetone()
-            return max_id + 1
+            try:
+                max_id = await cursor.fetchone()
+                return max_id[0] + 1
+            except Exception as e:
+                print(str(e))
             
     @staticmethod
     def quote(request) -> str:
