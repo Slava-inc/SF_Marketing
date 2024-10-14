@@ -13,7 +13,9 @@ logging.basicConfig(level=logging.INFO)
 
 class Execute:
     def __init__(self):
-        self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
+        # self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
+        self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], "SF_marketing/db.sqlite")
+
         self.conn = None
 
     async def create_data_base(self):
@@ -79,7 +81,32 @@ class Execute:
                 dict_user[item[0]] = {'history': list_history, 'messages': list_messages, 'first_name': item[3],
                                       'last_name': item[4], 'user_name': item[5]}
             return dict_user
+    async def set_user(self, id: int, dict_info: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_user(id, dict_info)
+        except Exception as e:
+            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            print(str(e))
 
+    async def execute_set_user(self, id: int, dict_info: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            try:
+                sql_record = f"INSERT INTO USERS " \
+                            f"(ID, USER_ID, HISTORY, MESSAGES, FIRST_NAME, LAST_NAME, USER_NAME) " \
+                            f"VALUES({id}, " \
+                            f"{dict_info['user_id']}, " \
+                            f"{dict_info['history']}, " \
+                            f"{dict_info['messages']}, " \
+                            f"{dict_info['first_name']}, " \
+                            f"{dict_info['last_name']}, " \
+                            f"'{dict_info['user_name']}') "
+            except Exception as e:
+                print(str(e))
+
+            await cursor.execute(sql_record)
+            await self.conn.commit() 
+                                
     async def get_user(self, id_user: int) -> dict:
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
@@ -344,6 +371,52 @@ class Execute:
                 print(my_table)
                 print(f"В базе {len(row_table)} целей")
 
+    async def set_category_income(self, id: int, dict_info: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_category_income(id, dict_info)
+        except Exception as e:
+            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            print(str(e))
+
+    async def execute_set_category_income(self, id: int, dict_info: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+
+            sql_record = f"INSERT INTO CATEGORY_INCOME " \
+                         f"(ID, USER_ID, NAME) " \
+                         f"VALUES({id}, " \
+                         f"{dict_info['user_id']}, " \
+                         f"'{dict_info['name']}') " 
+            await cursor.execute(sql_record)
+            await self.conn.commit() 
+
+    async def set_category_outlay(self, id: int, dict_info: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_category_outlay(id, dict_info)
+        except Exception as e:
+            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            print(str(e))
+
+    async def execute_set_category_outlay(self, id: int, dict_info: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+
+            sql_record = f"INSERT INTO CATEGORY_OUTLAY " \
+                         f"(ID, USER_ID, NAME) " \
+                         f"VALUES({id}, " \
+                         f"{dict_info['user_id']}, " \
+                         f"'{dict_info['name']}') " 
+            await cursor.execute(sql_record)
+            await self.conn.commit()   
+
+    async def get_row_id(self, table_name):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_row_max = f"select seq from sqlite_sequence" \
+                             f"where name={table_name} "
+            await cursor.execute(sql_row_max)
+            max_id = await cursor.fetone()
+            return max_id + 1
+            
     @staticmethod
     def quote(request) -> str:
         return f"'{str(request)}'"
