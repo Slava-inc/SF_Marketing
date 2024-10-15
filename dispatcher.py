@@ -163,7 +163,7 @@ class DispatcherMessage(Dispatcher):
             "migrate_from_chat_id", "pinned_message"}))
         async def get_message(message: Message):
             if message.content_type == "text":
-                if 'add_goal' in self.dict_user[message.from_user.id]['history'][-1]:
+                if 'add_goal_name' in self.dict_user[message.from_user.id]['history'][-1]:
                     task = asyncio.create_task(self.functions.show_add_name_goal(message))
                     task.set_name(f'{message.from_user.id}_task_add_name_goal')
                     await self.queues_message.start(task)
@@ -219,7 +219,7 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{callback.from_user.id}_task_income')
             await self.queues_message.start(task)
 
-        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_goal'))
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_new_goal'))
         async def send_add_goal_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_add_goal(callback))
             task.set_name(f'{callback.from_user.id}_task_add_goal')
