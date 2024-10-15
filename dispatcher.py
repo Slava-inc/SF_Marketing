@@ -14,6 +14,8 @@ from aiogram.utils.keyboard import InlineKeyboardMarkup
 from aiogram.enums.parse_mode import ParseMode
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -37,6 +39,8 @@ class BotMessage(Bot):
                                                        os.environ["MAIN_MENU_PNG"]))
         self.logo_goal_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
                                                        os.environ["GOAL_MENU_PNG"]))
+        print(os.path.join(os.path.split(os.path.dirname(__file__))[0],
+                           os.environ["GOAL_MENU_PNG"]))
         self.logo_outlay_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
                                                          os.environ["OUTLAY_MENU_PNG"]))
         self.logo_income_menu = FSInputFile(os.path.join(os.path.split(os.path.dirname(__file__))[0],
@@ -143,6 +147,7 @@ class DispatcherMessage(Dispatcher):
         self.startup.register(self.on_startup)
         self.shutdown.register(self.on_shutdown)
 
+
         @self.message(Command("start"))
         async def cmd_start(message: Message):
             task = asyncio.create_task(self.functions.show_command_start(message))
@@ -219,6 +224,18 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{callback.from_user.id}_task_back')
             await self.queues_message.start(task)
 
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'analytic_outlay'))
+        async def send_analyze_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.create_diagram(callback))
+            task.set_name(f'{callback.from_user.id}_task_analyze')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'start_ai'))
+        async def send_start_ai_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.start_ai(callback))
+            task.set_name(f'{callback.from_user.id}_task_start_ai')
+            await self.queues_message.start(task)
+
     async def on_startup(self):
         # Отправляем сообщение администратору о том, что бот был запущен
         # self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
@@ -229,6 +246,7 @@ class DispatcherMessage(Dispatcher):
         # await self.execute.update_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
         # self.scheduler_send_news()
         pass
+
 
     def scheduler_send_news(self):
         # Добавляем задачу отправки полезных советов в scheduler каждый день в 10:00

@@ -233,6 +233,31 @@ class Execute:
                 row_id = row_table[0]
             return row_id
 
+    @property
+    async def get_current_goal(self) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_current_goal()
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_current_goal', os.environ["EMAIL"], str(e))
+
+    async def execute_get_current_goal(self) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_list_goal = f"SELECT ROWID, USER_ID, GOAL_NAME, SUM_GOAL, INCOME_USER, INCOME_FREQUENCY, DURATION, " \
+                            f"REMINDER_DAYS, REMINDER_TIME, DATA_FINISH, STATUS_GOAL " \
+                            f"FROM GOAL " \
+                            f"WHERE STATUS_GOAL = 'current' "
+            await cursor.execute(sql_list_goal)
+            row_table = await cursor.fetchall()
+            dict_goal = {}
+            for item in row_table:
+                list_reminder_days = await self.get_dict_reminder_days(item[7])
+                dict_goal[item[0]] = {'user_id': item[1], 'goal_name': item[2], 'sum_goal': item[3],
+                                      'income_user': item[4], 'income_frequency': item[5], 'duration': item[6],
+                                      'reminder_days': list_reminder_days, 'reminder_time': item[8],
+                                      'data_finish': item[9], 'status_goal': item[10]}
+            return dict_goal
+
     async def insert_goal(self, user_id: int, dict_info_goal: dict) -> int:
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
@@ -319,6 +344,45 @@ class Execute:
                 print(my_table)
                 print(f"В базе {len(row_table)} целей")
 
+    async def set_category_income(self, id: int, dict_info: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_category_income(id, dict_info)
+        except Exception as e:
+            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            print(str(e))
+
+    async def execute_set_category_income(self, id: int, dict_info: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+
+            sql_record = f"INSERT INTO CATEGORY_INCOME " \
+                         f"(ID, USER_ID, NAME) " \
+                         f"VALUES({id}, " \
+                         f"{dict_info['user_id']}, " \
+                         f"'{dict_info['name']}') "
+            await cursor.execute(sql_record)
+            await self.conn.commit()
+
+    async def set_category_outlay(self, id: int, dict_info: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_category_outlay(id, dict_info)
+        except Exception as e:
+            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
+            print(str(e))
+
+    async def execute_set_category_outlay(self, id: int, dict_info: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+
+            sql_record = f"INSERT INTO CATEGORY_OUTLAY " \
+                         f"(ID, USER_ID, NAME) " \
+                         f"VALUES({id}, " \
+                         f"{dict_info['user_id']}, " \
+                         f"'{dict_info['name']}') "
+            await cursor.execute(sql_record)
+            await self.conn.commit()
+
+
     @staticmethod
     def quote(request) -> str:
         return f"'{str(request)}'"
@@ -342,7 +406,7 @@ class Execute:
         return dict_reminder_days
 
 
-base = Execute()
+# base = Execute()
 # asyncio.run(base.delete_table(f"GOAL"))
 # str_reminder_days = json.dumps({'MON': 0, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 0, 'SUN': 0})
 # asyncio.run(base.create_table(f"CREATE TABLE IF NOT EXISTS GOAL ("
@@ -362,11 +426,11 @@ base = Execute()
 #                               f"USER_ID INTEGER NOT NULL, "
 #                               f"NAME TEXT)"))
 # asyncio.run(base.show_columns('GOAL'))
-# asyncio.run(base.update_goal(1, {'user_id': '1660842495', 'goal_name': 'Квартира', 'sum_goal': 6000.00,
-#                                          'income_user': 2000.00, 'income_frequency': 2, 'duration': 60,
-#                                          'reminder_days': {'MON': 0, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 0,
-#                                                            'SUN': 0},
-#                                          'reminder_time': '10:00', 'data_finish': '25-01-30', 'status_goal': 'current'}))
-# asyncio.run(base.delete_user(1710730454))
-# asyncio.run(base.delete_goal(1660842495))
-asyncio.run(base.show_users())
+# asyncio.run(base.update_goal(1, {'user_id': '1660842495', 'goal_name': 'Машина', 'sum_goal': 6000.00,
+#                                  'income_user': 2000.00, 'income_frequency': 2, 'duration': 60,
+#                                  'reminder_days': {'MON': 1, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 1,
+#                                                    'SUN': 1},
+#                                  'reminder_time': '00:34', 'data_finish': '2025-01-30', 'status_goal': 'current'}))
+# asyncio.run(base.delete_user(1660842495))
+# asyncio.run(base.delete_goal(7))
+# asyncio.run(base.show_users())

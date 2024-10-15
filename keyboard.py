@@ -12,6 +12,7 @@ class KeyBoardBot:
             button_first_keyboard = {'goal': 'Цели 🎯',
                                      'outlay': 'Расходы 🧮',
                                      'income': 'Доходы 💰',
+                                     'start_ai': 'Начать диалог с помощником 📊',
                                      'back': 'Назад 🔙'}
         else:
             button_first_keyboard = {'goal': 'Цели 🎯',
