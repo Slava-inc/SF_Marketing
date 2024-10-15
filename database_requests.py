@@ -303,9 +303,20 @@ class Execute:
                               f"'{dict_info_goal['duration']}', '{str_reminder_days}', " \
                               f"'{dict_info_goal['reminder_time']}', '{dict_info_goal['data_finish']}', " \
                               f"'{dict_info_goal['status_goal']}') "
-            await cursor.execute(sql_insert_goal)
-            await self.conn.commit()
-            return cursor.lastrowid
+            try:
+                await cursor.execute(sql_insert_goal)
+                await self.conn.commit()
+                goal_id = await self.get_row_id(table_name='GOAL')
+                id = await self.get_row_id(table_name='CATEGORY_OUTLAY')
+                if id == None:
+                    id = 1
+                dict_info_category = {'user_id': dict_info_goal['user_id'], 
+                                      'name': dict_info_goal['goal_name'],
+                                      'goal_id': goal_id - 1}  
+                await self.set_category_outlay(id=id, dict_info=dict_info_category)              
+                return cursor.lastrowid
+            except Exception as e:
+                print(str(e))
 
     async def update_goal(self, row_id: int, dict_info_goal: dict):
         try:
@@ -402,9 +413,10 @@ class Execute:
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
 
             sql_record = f"INSERT INTO CATEGORY_OUTLAY " \
-                         f"(ID, USER_ID, NAME) " \
+                         f"(ID, USER_ID, GOAL_ID, NAME) " \
                          f"VALUES({id}, " \
                          f"{dict_info['user_id']}, " \
+                         f"{dict_info['goal_id']}, " \
                          f"'{dict_info['name']}') " 
             await cursor.execute(sql_record)
             await self.conn.commit()   
@@ -420,8 +432,9 @@ class Execute:
     async def execute_get_row_id(self, table_name):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
             sql_row_max = f"SELECT MAX(id) FROM {table_name}"
-            await cursor.execute(sql_row_max)
+
             try:
+                await cursor.execute(sql_row_max)
                 max_id = await cursor.fetchone()
                 return max_id[0] + 1
             except Exception as e:

@@ -12,6 +12,7 @@ TABLES = [f"CREATE TABLE IF NOT EXISTS USERS ("
                                   f"LAST_NAME   TEXT, "
                                   f"USER_NAME   TEXT)",
                                   "CREATE TABLE IF NOT EXISTS GOAL ("
+                                  f"ID INTEGER PRIMARY KEY, "
                                   f"USER_ID INTEGER NOT NULL, "
                                   f"GOAL_NAME TEXT, "
                                   f"SUM_GOAL REAL, "
