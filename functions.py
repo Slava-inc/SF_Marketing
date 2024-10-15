@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from keyboard import KeyBoardBot
 from database_requests import Execute
 from edit_pdf import GetTextOCR
+from ai import AI
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, FSInputFile, ChatPermissions
 from aiogram.utils.keyboard import InlineKeyboardMarkup
@@ -24,6 +25,7 @@ class Function:
         self.keyboard = KeyBoardBot()
         self.execute = Execute()
         self.info_pdf = GetTextOCR()
+        self.ai = AI(os.environ["TOKEN_SBER"])
         self.dict_user = asyncio.run(self.execute.get_dict_user)
         self.dict_goal = asyncio.run(self.execute.get_dict_goal)
 
@@ -32,6 +34,8 @@ class Function:
             previous_history = self.dict_user[call_back.from_user.id]['history'].pop()
             if self.dict_user[call_back.from_user.id]['history'][-1] == 'start':
                 await self.return_start(call_back)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'ai':
+                await self.show_virtual_assistant(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'goal':
                 await self.show_add_goal(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'outlay':
@@ -67,6 +71,37 @@ class Function:
             this_bot = False
         return this_bot
 
+    async def show_virtual_assistant(self, call_back: CallbackQuery, back_history: str = None):
+        if back_history is None:
+            back_ai = {'back': 'Выйти из виртуального ассистента 🚪'}
+            text = 'Привет! Я ваш виртуальный ассистент, чем могу помочь?'
+            answer = await self.bot.send_message_news(call_back.message.chat.id, self.build_keyboard(back_ai, 1), text)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[call_back.from_user.id]['history'].append('ai')
+        else:
+            first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
+            text = f"{self.format_text('Поставить цель 🎯')} - выбрать цель, на которую будем копить!\n" \
+                   f"{self.format_text('Расходы 🧮')} - меню учета расходов\n" \
+                   f"{self.format_text('Доходы 💰')} - меню учета доходов\n"
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(first_keyboard, 1), self.bot.logo_main_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def answer_ai(self, message: Message):
+        answer_ai = await self.ai.get_gigachat_response(message.text)
+        back_ai = {'back': 'Выйти из виртуального ассистента 🚪'}
+        answer = await self.answer_message(message, answer_ai, self.build_keyboard(back_ai, 1))
+        self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
+        self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
+        return True
+
     async def show_ok(self, call_back: CallbackQuery):
         self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
             call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'],
@@ -97,6 +132,92 @@ class Function:
                                                                                               'messages'])
             self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
             self.dict_user[message.from_user.id]['history'].append('start')
+            await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
+        return True
+
+    async def show_command_goal(self, message: Message):
+        check = await self.checking_bot(message)
+        if check:
+            await self.delete_messages(message.from_user.id, [message.message_id])
+        else:
+            if message.from_user.id not in self.dict_user.keys():
+                self.dict_user[message.from_user.id] = {'history': ['start'], 'messages': [],
+                                                        'first_name': message.from_user.first_name,
+                                                        'last_name': message.from_user.last_name,
+                                                        'user_name': message.from_user.username}
+            keyboard_goal = await self.keyboard.get_goal_menu()
+            text = f"{self.format_text('Добавить новую цель ➕')} - " \
+                   f"добавить новую цель, на которую собираетесь копить\n" \
+                   f"{self.format_text('Показать список целей 👀')} - показать список уже имеющихся у Вас целей\n"
+            answer = await self.bot.push_photo(message.chat.id, text, self.build_keyboard(keyboard_goal, 1),
+                                               self.bot.logo_main_menu)
+            self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
+            self.dict_user[message.from_user.id]['messages'] = await self.delete_messages(message.from_user.id,
+                                                                                          self.dict_user[
+                                                                                              message.from_user.id][
+                                                                                              'messages'])
+            self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[message.from_user.id]['history'].append('goal')
+            await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
+        return True
+
+    async def show_command_outlay(self, message: Message):
+        check = await self.checking_bot(message)
+        if check:
+            await self.delete_messages(message.from_user.id, [message.message_id])
+        else:
+            if message.from_user.id not in self.dict_user.keys():
+                self.dict_user[message.from_user.id] = {'history': ['start'], 'messages': [],
+                                                        'first_name': message.from_user.first_name,
+                                                        'last_name': message.from_user.last_name,
+                                                        'user_name': message.from_user.username}
+            keyboard_outlay = await self.keyboard.get_outlay_menu()
+            text = f"{self.format_text('Добавить новые расходы ➕')} " \
+                   f"- добавьте расходы, отправив файл PDF или вручную\n" \
+                   f"{self.format_text('Показать список расходов 👀')} " \
+                   f"- вывести на экран список всех расходов за месяц\n" \
+                   f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
+                   f"{self.format_text('Изменить категории расходов ⚙')} - изменить список категорий расходов\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+            answer = await self.bot.push_photo(message.chat.id, text, self.build_keyboard(keyboard_outlay, 1),
+                                               self.bot.logo_main_menu)
+            self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
+            self.dict_user[message.from_user.id]['messages'] = await self.delete_messages(message.from_user.id,
+                                                                                          self.dict_user[
+                                                                                              message.from_user.id][
+                                                                                              'messages'])
+            self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[message.from_user.id]['history'].append('goal')
+            await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
+        return True
+
+    async def show_command_income(self, message: Message):
+        check = await self.checking_bot(message)
+        if check:
+            await self.delete_messages(message.from_user.id, [message.message_id])
+        else:
+            if message.from_user.id not in self.dict_user.keys():
+                self.dict_user[message.from_user.id] = {'history': ['start'], 'messages': [],
+                                                        'first_name': message.from_user.first_name,
+                                                        'last_name': message.from_user.last_name,
+                                                        'user_name': message.from_user.username}
+            keyboard_income = await self.keyboard.get_income_menu()
+            text = f"{self.format_text('Добавить новые доходы ➕')} " \
+                   f"- добавьте доходы, отправив файл PDF или вручную\n" \
+                   f"{self.format_text('Показать список доходов 👀')} " \
+                   f"- вывести на экран список всех доходов за месяц\n" \
+                   f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
+                   f"{self.format_text('Изменить категории доходов ⚙')} - изменить список категорий доходов\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+            answer = await self.bot.push_photo(message.chat.id, text, self.build_keyboard(keyboard_income, 1),
+                                               self.bot.logo_main_menu)
+            self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
+            self.dict_user[message.from_user.id]['messages'] = await self.delete_messages(message.from_user.id,
+                                                                                          self.dict_user[
+                                                                                              message.from_user.id][
+                                                                                              'messages'])
+            self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[message.from_user.id]['history'].append('goal')
             await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
         return True
 
@@ -170,13 +291,15 @@ class Function:
         return True
 
     async def show_outlay(self, call_back: CallbackQuery, back_history: str = None):
-        keyboard_outlay = await self.keyboard.get_outlay_menu()
-        text = f"{self.format_text('Добавить новые расходы ➕')} - добавьте расходы, отправив файл PDF или вручную\n" \
-               f"{self.format_text('Показать список расходов 👀')} - вывести на экран список всех расходов за месяц\n" \
-               f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
-               f"{self.format_text('Изменить категории расходов ⚙')} - изменить список категорий расходов\n" \
-               f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
         if back_history is None:
+            keyboard_outlay = await self.keyboard.get_outlay_menu()
+            text = f"{self.format_text('Добавить новые расходы ➕')} " \
+                   f"- добавьте расходы, отправив файл PDF или вручную\n" \
+                   f"{self.format_text('Показать список расходов 👀')} " \
+                   f"- вывести на экран список всех расходов за месяц\n" \
+                   f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
+                   f"{self.format_text('Изменить категории расходов ⚙')} - изменить список категорий расходов\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
             answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_outlay, 1),
                                                self.bot.logo_outlay_menu)
             self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
@@ -197,13 +320,15 @@ class Function:
         return True
 
     async def show_income(self, call_back: CallbackQuery, back_history: str = None):
-        keyboard_income = await self.keyboard.get_income_menu()
-        text = f"{self.format_text('Добавить новые доходы ➕')} - добавьте доходы, отправив файл PDF или вручную\n" \
-               f"{self.format_text('Показать список доходов 👀')} - вывести на экран список всех доходов за месяц\n" \
-               f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
-               f"{self.format_text('Изменить категории доходов ⚙')} - изменить список категорий доходов\n" \
-               f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
         if back_history is None:
+            keyboard_income = await self.keyboard.get_income_menu()
+            text = f"{self.format_text('Добавить новые доходы ➕')} " \
+                   f"- добавьте доходы, отправив файл PDF или вручную\n" \
+                   f"{self.format_text('Показать список доходов 👀')} " \
+                   f"- вывести на экран список всех доходов за месяц\n" \
+                   f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
+                   f"{self.format_text('Изменить категории доходов ⚙')} - изменить список категорий доходов\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
             answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_income, 1),
                                                self.bot.logo_income_menu)
             self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(

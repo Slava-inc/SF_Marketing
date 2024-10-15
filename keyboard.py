@@ -13,11 +13,13 @@ class KeyBoardBot:
             button_first_keyboard = {'goal': 'Цели 🎯',
                                      'outlay': 'Расходы 🧮',
                                      'income': 'Доходы 💰',
+                                     'virtual_assistant': 'Виртуальный помощник 🤖',
                                      'back': 'Назад 🔙'}
         else:
             button_first_keyboard = {'goal': 'Цели 🎯',
                                      'outlay': 'Расходы 🧮',
-                                     'income': 'Доходы 💰'}
+                                     'income': 'Доходы 💰',
+                                     'virtual_assistant': 'Виртуальный помощник 🤖'}
         return button_first_keyboard
 
     @staticmethod
