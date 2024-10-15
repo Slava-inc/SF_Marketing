@@ -141,6 +141,12 @@ class DispatcherMessage(Dispatcher):
         self.scheduler = Reminders(self, self.functions, self.functions.keyboard)
         self.dict_user = self.functions.dict_user
         self.digit = {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '0': 0}
+        self.weekday = {'MON': 'Понедельник', 'TUE': 'Вторник', 'WED': 'Среда', 'THU': 'Четверг', 'FRI': 'Пятница',
+                        'SAT': 'Суббота', 'SUN': 'Воскресенье'}
+        self.dict_time = {'06:00': '06:00', '07:00': '07:00', '08:00': '08:00', '09:00': '09:00', '10:00': '10:00',
+                          '11:00': '11:00', '12:00': '12:00', '13:00': '13:00', '14:00': '14:00', '15:00': '15:00',
+                          '16:00': '16:00', '17:00': '17:00', '18:00': '18:00', '19:00': '19:00', '20:00': '20:00',
+                          '21:00': '21:00', '22:00': '22:00', '23:00': '23:00', '00:00': '00:00'}
         self.startup.register(self.on_startup)
         self.shutdown.register(self.on_shutdown)
 
@@ -267,6 +273,36 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{callback.from_user.id}_task_done_duration')
             await self.queues_message.start(task)
 
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_reminder_days'))
+        async def send_done_reminder_days_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_done_reminder_days(callback))
+            task.set_name(f'{callback.from_user.id}_task_done_reminder_days')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.in_(self.weekday)))
+        async def send_weekday(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_weekday(callback))
+            task.set_name(f'{callback.from_user.id}_task_weekday')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_reminder_time'))
+        async def send_done_reminder_time_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_done_reminder_time(callback))
+            task.set_name(f'{callback.from_user.id}_task_done_reminder_time')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.in_(self.dict_time)))
+        async def send_reminder_time(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_reminder_time(callback))
+            task.set_name(f'{callback.from_user.id}_task_reminder_time')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'ок'))
+        async def send_back_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_ok(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_ok')
+            await self.queues_message.start(task)
+
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))
         async def send_back_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_back(callback))
@@ -288,10 +324,12 @@ class DispatcherMessage(Dispatcher):
             for key, item in dict_current_goal.items():
                 await self.scheduler.add_new_reminder(key, item)
         if len(self.dict_user) != 0:
+            text_recommendation = await self.functions.keyboard.text_for_news()
             for user_id in self.dict_user.keys():
-                await self.scheduler.add_newsletter(user_id)
+                await self.scheduler.add_newsletter(user_id, text_recommendation)
 
     async def on_shutdown(self):
+        await self.update_base_on_shutdown()
         # Отправляем сообщение администратору о том, что бот был остановлен
         self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
             int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
@@ -300,6 +338,15 @@ class DispatcherMessage(Dispatcher):
         self.dict_user[int(os.environ["ADMIN_ID"])]['history'] = ['start']
         await self.execute.update_user(int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])])
         await self.bot.session.close()
+
+    async def update_base_on_shutdown(self):
+        relevant_dict_users = await self.execute.get_dict_user
+        for key, item in relevant_dict_users.items():
+            if key in self.dict_user.keys():
+                await self.execute.update_user(key, self.dict_user[key])
+            else:
+                await self.execute.delete_user(key)
+        print('База обновлена')
 
 
 class QueuesMedia:

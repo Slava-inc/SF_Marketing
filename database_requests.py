@@ -1,4 +1,4 @@
-import asyncio
+# import asyncio
 import json
 import logging
 import aiosqlite
@@ -13,9 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 class Execute:
     def __init__(self):
-        # self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
-        self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], "SF_marketing/db.sqlite")
-
+        self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
         self.conn = None
 
     async def create_data_base(self):
@@ -81,6 +79,7 @@ class Execute:
                 dict_user[item[0]] = {'history': list_history, 'messages': list_messages, 'first_name': item[3],
                                       'last_name': item[4], 'user_name': item[5]}
             return dict_user
+
     async def set_user(self, id: int, dict_info: dict):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
@@ -483,11 +482,12 @@ class Execute:
 #                               f"USER_ID INTEGER NOT NULL, "
 #                               f"NAME TEXT)"))
 # asyncio.run(base.show_columns('GOAL'))
-# asyncio.run(base.update_goal(1, {'user_id': '1660842495', 'goal_name': 'Машина', 'sum_goal': 6000.00,
+# asyncio.run(base.update_goal(2, {'user_id': '1660842495', 'goal_name': 'Машина', 'sum_goal': 6000.00,
 #                                  'income_user': 2000.00, 'income_frequency': 2, 'duration': 60,
 #                                  'reminder_days': {'MON': 1, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 1,
 #                                                    'SUN': 1},
-#                                  'reminder_time': '00:34', 'data_finish': '2025-01-30', 'status_goal': 'current'}))
+#                                  'reminder_time': '14:00', 'data_finish': '2025-01-30', 'status_goal': 'current'}))
 # asyncio.run(base.delete_user(1660842495))
-# asyncio.run(base.delete_goal(7))
+# # asyncio.run(base.delete_goal(7))
 # asyncio.run(base.show_users())
+# asyncio.run(base.show_goals())
