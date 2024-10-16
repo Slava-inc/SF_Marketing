@@ -13,23 +13,25 @@ class KeyBoardBot:
             button_first_keyboard = {'goal': 'Цели 🎯',
                                      'outlay': 'Расходы 🧮',
                                      'income': 'Доходы 💰',
+                                     'virtual_assistant': 'Виртуальный помощник 🤖',
                                      'back': 'Назад 🔙'}
         else:
             button_first_keyboard = {'goal': 'Цели 🎯',
                                      'outlay': 'Расходы 🧮',
-                                     'income': 'Доходы 💰'}
+                                     'income': 'Доходы 💰',
+                                     'virtual_assistant': 'Виртуальный помощник 🤖'}
         return button_first_keyboard
 
     @staticmethod
     async def get_goal_menu():
-        button_goal_keyboard = {'add_goal': 'Добавить новую цель ➕',
+        button_goal_keyboard = {'add_new_goal': 'Добавить новую цель ➕',
                                 'show_goal': 'Показать список целей 👀',
                                 'back': 'Назад 🔙'}
         return button_goal_keyboard
 
     @staticmethod
     async def get_outlay_menu():
-        button_outlay_keyboard = {'add_outlay': 'Добавить новые расходы ➕',
+        button_outlay_keyboard = {'add_new_outlay': 'Добавить новые расходы ➕',
                                   'show_outlay': 'Показать список расходов 👀',
                                   'analytic_outlay': 'Аналитика расходов 📊',
                                   'change_category_outlay': 'Изменить категории расходов ⚙',
@@ -38,7 +40,7 @@ class KeyBoardBot:
 
     @staticmethod
     async def get_income_menu():
-        button_income_keyboard = {'add_income': 'Добавить новые доходы ➕',
+        button_income_keyboard = {'add_new_income': 'Добавить новые доходы ➕',
                                   'show_income': 'Показать список доходов 👀',
                                   'analytic_income': 'Аналитика доходов 📊',
                                   'change_category_income': 'Изменить категории доходов ⚙',

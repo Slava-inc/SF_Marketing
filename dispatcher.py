@@ -156,6 +156,24 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{message.from_user.id}_task_command_start')
             await self.queues_message.start(task)
 
+        @self.message(Command("goal"))
+        async def cmd_start(message: Message):
+            task = asyncio.create_task(self.functions.show_command_goal(message))
+            task.set_name(f'{message.from_user.id}_task_command_goal')
+            await self.queues_message.start(task)
+
+        @self.message(Command("outlay"))
+        async def cmd_start(message: Message):
+            task = asyncio.create_task(self.functions.show_command_outlay(message))
+            task.set_name(f'{message.from_user.id}_task_command_outlay')
+            await self.queues_message.start(task)
+
+        @self.message(Command("income"))
+        async def cmd_start(message: Message):
+            task = asyncio.create_task(self.functions.show_command_income(message))
+            task.set_name(f'{message.from_user.id}_task_command_income')
+            await self.queues_message.start(task)
+
         @self.message(F.from_user.id.in_(self.dict_user) & F.content_type.in_({
             "text", "audio", "document", "photo", "sticker", "video", "video_note", "voice", "location", "contact",
             "new_chat_members", "left_chat_member", "new_chat_title", "new_chat_photo", "delete_chat_photo",
@@ -163,9 +181,13 @@ class DispatcherMessage(Dispatcher):
             "migrate_from_chat_id", "pinned_message"}))
         async def get_message(message: Message):
             if message.content_type == "text":
-                if 'add_goal' in self.dict_user[message.from_user.id]['history'][-1]:
+                if 'add_goal_name' in self.dict_user[message.from_user.id]['history'][-1]:
                     task = asyncio.create_task(self.functions.show_add_name_goal(message))
                     task.set_name(f'{message.from_user.id}_task_add_name_goal')
+                    await self.queues_message.start(task)
+                elif 'ai' in self.dict_user[message.from_user.id]['history'][-1]:
+                    task = asyncio.create_task(self.functions.answer_ai(message))
+                    task.set_name(f'{message.from_user.id}_task_answer_ai')
                     await self.queues_message.start(task)
                 else:
                     print(message.text)
@@ -219,7 +241,7 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{callback.from_user.id}_task_income')
             await self.queues_message.start(task)
 
-        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_goal'))
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_new_goal'))
         async def send_add_goal_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_add_goal(callback))
             task.set_name(f'{callback.from_user.id}_task_add_goal')
@@ -301,6 +323,12 @@ class DispatcherMessage(Dispatcher):
         async def send_back_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_ok(callback))
             task.set_name(f'{callback.from_user.id}_task_show_ok')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'virtual_assistant'))
+        async def send_virtual_assistant_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_virtual_assistant(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_virtual_assistant')
             await self.queues_message.start(task)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))

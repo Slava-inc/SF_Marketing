@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from keyboard import KeyBoardBot
 from database_requests import Execute
 from edit_pdf import GetTextOCR
+from ai import AI
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, FSInputFile, ChatPermissions
 from aiogram.utils.keyboard import InlineKeyboardMarkup
@@ -24,6 +25,7 @@ class Function:
         self.keyboard = KeyBoardBot()
         self.execute = Execute()
         self.info_pdf = GetTextOCR()
+        self.ai = AI(os.environ["TOKEN_SBER"])
         self.dict_user = asyncio.run(self.execute.get_dict_user)
         self.dict_goal = asyncio.run(self.execute.get_dict_goal)
 
@@ -32,15 +34,15 @@ class Function:
             previous_history = self.dict_user[call_back.from_user.id]['history'].pop()
             if self.dict_user[call_back.from_user.id]['history'][-1] == 'start':
                 await self.return_start(call_back)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'ai':
+                await self.show_virtual_assistant(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'goal':
-                await self.show_goal(call_back, previous_history)
+                await self.show_add_goal(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'outlay':
                 await self.show_outlay(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'income':
                 await self.show_income(call_back, previous_history)
-            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_goal':
-                await self.show_add_goal(call_back, previous_history)
-            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_goal':
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_goal_name':
                 await self.show_add_name_goal(call_back.message, previous_history, call_back)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
                 await self.show_done_sum_goal(call_back, previous_history)
@@ -52,6 +54,8 @@ class Function:
                 await self.show_done_duration(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_reminder_days':
                 await self.show_done_reminder_days(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_reminder_time':
+                await self.show_done_reminder_time(call_back, previous_history)
             else:
                 await self.return_start(call_back)
             return True
@@ -66,6 +70,37 @@ class Function:
         else:
             this_bot = False
         return this_bot
+
+    async def show_virtual_assistant(self, call_back: CallbackQuery, back_history: str = None):
+        if back_history is None:
+            back_ai = {'back': 'Выйти из виртуального ассистента 🚪'}
+            text = 'Привет! Я ваш виртуальный ассистент, чем могу помочь?'
+            answer = await self.bot.send_message_news(call_back.message.chat.id, self.build_keyboard(back_ai, 1), text)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[call_back.from_user.id]['history'].append('ai')
+        else:
+            first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
+            text = f"{self.format_text('Поставить цель 🎯')} - выбрать цель, на которую будем копить!\n" \
+                   f"{self.format_text('Расходы 🧮')} - меню учета расходов\n" \
+                   f"{self.format_text('Доходы 💰')} - меню учета доходов\n"
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(first_keyboard, 1), self.bot.logo_main_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def answer_ai(self, message: Message):
+        answer_ai = await self.ai.get_gigachat_response(message.text)
+        back_ai = {'back': 'Выйти из виртуального ассистента 🚪'}
+        answer = await self.answer_message(message, answer_ai, self.build_keyboard(back_ai, 1))
+        self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
+        self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
+        return True
 
     async def show_ok(self, call_back: CallbackQuery):
         self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
@@ -97,6 +132,92 @@ class Function:
                                                                                               'messages'])
             self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
             self.dict_user[message.from_user.id]['history'].append('start')
+            await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
+        return True
+
+    async def show_command_goal(self, message: Message):
+        check = await self.checking_bot(message)
+        if check:
+            await self.delete_messages(message.from_user.id, [message.message_id])
+        else:
+            if message.from_user.id not in self.dict_user.keys():
+                self.dict_user[message.from_user.id] = {'history': ['start'], 'messages': [],
+                                                        'first_name': message.from_user.first_name,
+                                                        'last_name': message.from_user.last_name,
+                                                        'user_name': message.from_user.username}
+            keyboard_goal = await self.keyboard.get_goal_menu()
+            text = f"{self.format_text('Добавить новую цель ➕')} - " \
+                   f"добавить новую цель, на которую собираетесь копить\n" \
+                   f"{self.format_text('Показать список целей 👀')} - показать список уже имеющихся у Вас целей\n"
+            answer = await self.bot.push_photo(message.chat.id, text, self.build_keyboard(keyboard_goal, 1),
+                                               self.bot.logo_main_menu)
+            self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
+            self.dict_user[message.from_user.id]['messages'] = await self.delete_messages(message.from_user.id,
+                                                                                          self.dict_user[
+                                                                                              message.from_user.id][
+                                                                                              'messages'])
+            self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[message.from_user.id]['history'].append('goal')
+            await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
+        return True
+
+    async def show_command_outlay(self, message: Message):
+        check = await self.checking_bot(message)
+        if check:
+            await self.delete_messages(message.from_user.id, [message.message_id])
+        else:
+            if message.from_user.id not in self.dict_user.keys():
+                self.dict_user[message.from_user.id] = {'history': ['start'], 'messages': [],
+                                                        'first_name': message.from_user.first_name,
+                                                        'last_name': message.from_user.last_name,
+                                                        'user_name': message.from_user.username}
+            keyboard_outlay = await self.keyboard.get_outlay_menu()
+            text = f"{self.format_text('Добавить новые расходы ➕')} " \
+                   f"- добавьте расходы, отправив файл PDF или вручную\n" \
+                   f"{self.format_text('Показать список расходов 👀')} " \
+                   f"- вывести на экран список всех расходов за месяц\n" \
+                   f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
+                   f"{self.format_text('Изменить категории расходов ⚙')} - изменить список категорий расходов\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+            answer = await self.bot.push_photo(message.chat.id, text, self.build_keyboard(keyboard_outlay, 1),
+                                               self.bot.logo_main_menu)
+            self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
+            self.dict_user[message.from_user.id]['messages'] = await self.delete_messages(message.from_user.id,
+                                                                                          self.dict_user[
+                                                                                              message.from_user.id][
+                                                                                              'messages'])
+            self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[message.from_user.id]['history'].append('goal')
+            await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
+        return True
+
+    async def show_command_income(self, message: Message):
+        check = await self.checking_bot(message)
+        if check:
+            await self.delete_messages(message.from_user.id, [message.message_id])
+        else:
+            if message.from_user.id not in self.dict_user.keys():
+                self.dict_user[message.from_user.id] = {'history': ['start'], 'messages': [],
+                                                        'first_name': message.from_user.first_name,
+                                                        'last_name': message.from_user.last_name,
+                                                        'user_name': message.from_user.username}
+            keyboard_income = await self.keyboard.get_income_menu()
+            text = f"{self.format_text('Добавить новые доходы ➕')} " \
+                   f"- добавьте доходы, отправив файл PDF или вручную\n" \
+                   f"{self.format_text('Показать список доходов 👀')} " \
+                   f"- вывести на экран список всех доходов за месяц\n" \
+                   f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
+                   f"{self.format_text('Изменить категории доходов ⚙')} - изменить список категорий доходов\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+            answer = await self.bot.push_photo(message.chat.id, text, self.build_keyboard(keyboard_income, 1),
+                                               self.bot.logo_main_menu)
+            self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
+            self.dict_user[message.from_user.id]['messages'] = await self.delete_messages(message.from_user.id,
+                                                                                          self.dict_user[
+                                                                                              message.from_user.id][
+                                                                                              'messages'])
+            self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[message.from_user.id]['history'].append('goal')
             await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
         return True
 
@@ -145,11 +266,113 @@ class Function:
         return True
 
     async def show_goal(self, call_back: CallbackQuery, back_history: str = None):
-        keyboard_goal = await self.keyboard.get_goal_menu()
-        text = f"{self.format_text('Добавить новую цель ➕')} - добавить новую цель, на которую собираетесь копить\n" \
-               f"{self.format_text('Показать список целей 👀')} - показать список уже имеющихся у Вас целей\n"
-        if back_history is not None:
-            if back_history == 'add_goal':
+        if back_history is None:
+            keyboard_goal = await self.keyboard.get_goal_menu()
+            text = f"{self.format_text('Добавить новую цель ➕')} - " \
+                   f"добавить новую цель, на которую собираетесь копить\n" \
+                   f"{self.format_text('Показать список целей 👀')} - показать список уже имеющихся у Вас целей\n"
+            answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_goal, 1),
+                                               self.bot.logo_goal_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
+        else:
+            first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
+            text = f"{self.format_text('Поставить цель 🎯')} - выбрать цель, на которую будем копить!\n" \
+                   f"{self.format_text('Расходы 🧮')} - меню учета расходов\n" \
+                   f"{self.format_text('Доходы 💰')} - меню учета доходов\n"
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(first_keyboard, 1), self.bot.logo_main_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_outlay(self, call_back: CallbackQuery, back_history: str = None):
+        if back_history is None:
+            keyboard_outlay = await self.keyboard.get_outlay_menu()
+            text = f"{self.format_text('Добавить новые расходы ➕')} " \
+                   f"- добавьте расходы, отправив файл PDF или вручную\n" \
+                   f"{self.format_text('Показать список расходов 👀')} " \
+                   f"- вывести на экран список всех расходов за месяц\n" \
+                   f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
+                   f"{self.format_text('Изменить категории расходов ⚙')} - изменить список категорий расходов\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+            answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_outlay, 1),
+                                               self.bot.logo_outlay_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
+        else:
+            first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
+            text = f"{self.format_text('Поставить цель 🎯')} - выбрать цель, на которую будем копить!\n" \
+                   f"{self.format_text('Расходы 🧮')} - меню учета расходов\n" \
+                   f"{self.format_text('Доходы 💰')} - меню учета доходов\n"
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(first_keyboard, 1), self.bot.logo_main_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_income(self, call_back: CallbackQuery, back_history: str = None):
+        if back_history is None:
+            keyboard_income = await self.keyboard.get_income_menu()
+            text = f"{self.format_text('Добавить новые доходы ➕')} " \
+                   f"- добавьте доходы, отправив файл PDF или вручную\n" \
+                   f"{self.format_text('Показать список доходов 👀')} " \
+                   f"- вывести на экран список всех доходов за месяц\n" \
+                   f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
+                   f"{self.format_text('Изменить категории доходов ⚙')} - изменить список категорий доходов\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+            answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_income, 1),
+                                               self.bot.logo_income_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
+        else:
+            first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
+            text = f"{self.format_text('Поставить цель 🎯')} - выбрать цель, на которую будем копить!\n" \
+                   f"{self.format_text('Расходы 🧮')} - меню учета расходов\n" \
+                   f"{self.format_text('Доходы 💰')} - меню учета доходов\n"
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(first_keyboard, 1), self.bot.logo_main_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_add_goal(self, call_back: CallbackQuery, back_history: str = None):
+        if back_history is None:
+            row_id = await self.execute.check_new_goal(call_back.from_user.id)
+            if not row_id:
+                default_value = {"goal_name": "", "sum_goal": 0, "income_user": 0, "income_frequency": 0, "duration": 0,
+                                 "reminder_days": {'MON': 0, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 0,
+                                                   'SUN': 0},
+                                 'reminder_time': '10:00', 'data_finish': '30-12-31', 'status_goal': 'new'}
+                row_id = await self.execute.insert_goal(call_back.from_user.id, default_value)
+                default_value['user_id'] = call_back.from_user.id
+                self.dict_goal[row_id] = default_value
+            keyboard_back = {'back': 'Назад 🔙'}
+            text_in_message = 'Давай определим твою цель! Напиши ее ✍'
+            text = f"{self.format_text(text_in_message)} - отправь боту сообщение с названием твоей будущей цели, " \
+                   f"например, <code>Автомобиль</code>"
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_back, 1))
+            self.dict_user[call_back.from_user.id]['history'].append('add_goal_name')
+        else:
+            keyboard_goal = await self.keyboard.get_goal_menu()
+            text = f"{self.format_text('Добавить новую цель ➕')} " \
+                   f"- добавить новую цель, на которую собираетесь копить\n" \
+                   f"{self.format_text('Показать список целей 👀')} - показать список уже имеющихся у Вас целей\n"
+            if back_history == 'add_goal_name':
                 await self.edit_caption(call_back.message, text, self.build_keyboard(keyboard_goal, 1))
             else:
                 answer = await self.bot.push_photo(call_back.message.chat.id, text,
@@ -157,152 +380,75 @@ class Function:
                 self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
                     call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
                 self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        else:
-            answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_goal, 1),
-                                               self.bot.logo_goal_menu)
-            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
-        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
-        return True
-
-    async def show_outlay(self, call_back: CallbackQuery, back_history: str = None):
-        keyboard_outlay = await self.keyboard.get_outlay_menu()
-        text = f"{self.format_text('Добавить новые расходы ➕')} - добавьте расходы, отправив файл PDF или вручную\n" \
-               f"{self.format_text('Показать список расходов 👀')} - вывести на экран список всех расходов за месяц\n" \
-               f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
-               f"{self.format_text('Изменить категории расходов ⚙')} - изменить список категорий расходов\n" \
-               f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
-        if back_history is not None:
-            if back_history == 'add_outlay':
-                await self.edit_caption(call_back.message, text, self.build_keyboard(keyboard_outlay, 1))
-            else:
-                answer = await self.bot.push_photo(call_back.message.chat.id, text,
-                                                   self.build_keyboard(keyboard_outlay, 1),
-                                                   self.bot.logo_outlay_menu)
-                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        else:
-            answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_outlay, 1),
-                                               self.bot.logo_outlay_menu)
-            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
-        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
-        return True
-
-    async def show_income(self, call_back: CallbackQuery, back_history: str = None):
-        keyboard_income = await self.keyboard.get_income_menu()
-        text = f"{self.format_text('Добавить новые доходы ➕')} - добавьте доходы, отправив файл PDF или вручную\n" \
-               f"{self.format_text('Показать список доходов 👀')} - вывести на экран список всех доходов за месяц\n" \
-               f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
-               f"{self.format_text('Изменить категории доходов ⚙')} - изменить список категорий доходов\n" \
-               f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
-        if back_history is not None:
-            if back_history == 'add_income':
-                await self.edit_caption(call_back.message, text, self.build_keyboard(keyboard_income, 1))
-            else:
-                answer = await self.bot.push_photo(call_back.message.chat.id, text,
-                                                   self.build_keyboard(keyboard_income, 1),
-                                                   self.bot.logo_income_menu)
-                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        else:
-            answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_income, 1),
-                                               self.bot.logo_income_menu)
-            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
-        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
-        return True
-
-    async def show_add_goal(self, call_back: CallbackQuery, back_history: str = None):
-        row_id = await self.execute.check_new_goal(call_back.from_user.id)
-        if not row_id:
-            default_value = {"goal_name": "", "sum_goal": 0, "income_user": 0, "income_frequency": 0, "duration": 0,
-                             "reminder_days": {'MON': 0, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 0, 'SUN': 0},
-                             'reminder_time': '10:00', 'data_finish': '30-12-31', 'status_goal': 'new'}
-            row_id = await self.execute.insert_goal(call_back.from_user.id, default_value)
-            default_value['user_id'] = call_back.from_user.id
-            self.dict_goal[row_id] = default_value
-        button_back = {'back': 'Назад 🔙'}
-        text = f"{self.format_text('Давай определим твою цель! Напиши ее ✍')} - отправь боту сообщение с названием " \
-               f"твоей будущей цели, например, <code>Автомобиль</code>"
-        if back_history is not None:
-            if back_history == 'add_name_goal':
-                await self.edit_caption(call_back.message, text, self.build_keyboard(button_back, 1))
-            else:
-                answer = await self.bot.push_photo(call_back.message.chat.id, text,
-                                                   self.build_keyboard(button_back, 1), self.bot.logo_goal_menu)
-                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        else:
-            answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(button_back, 1),
-                                               self.bot.logo_goal_menu)
-            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
     async def show_add_name_goal(self, message: Message, back_history: str = None, call_back: CallbackQuery = None):
-        if back_history is not None:
-            user_id = call_back.from_user.id
-            row_id = await self.execute.check_new_goal(user_id)
-            name_goal = self.dict_goal[row_id]['goal_name']
-            amount = str(int(self.dict_goal[row_id]['sum_goal']))
-        else:
+        if back_history is None:
             user_id = message.from_user.id
             row_id = await self.execute.check_new_goal(user_id)
-            name_goal = await self.check_text(message.text)
-            amount = '0'
-        self.dict_goal[row_id]['goal_name'] = name_goal
-        await self.execute.update_goal(row_id, self.dict_goal[row_id])
-        keyboard_calculater = await self.keyboard.get_calculater()
-        button_done = {'done_sum_goal': 'Готово ✅'}
-        text = f"Наименование цели: {self.format_text(name_goal)}\n" \
-               f"{self.format_text('Теперь нужна сумма, которую Вы хотите накопить 💸')} - введите сумму в рублях, " \
-               f"которую планируете накопить для достижения цели\n" \
-               f"Сумма цели: {self.format_text(amount)} ₽"
-        if back_history is not None:
-            if back_history == 'add_sum_goal':
-                await self.bot.edit_head_caption(text, message.chat.id,
+            check_name_goal = await self.check_text(message.text)
+            await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
+            if not check_name_goal:
+                goal_name = ""
+                self.dict_goal[row_id]['goal_name'] = goal_name
+                keyboard_back = {'back': 'Назад 🔙'}
+                text_in_message = 'Наименование цели должно содержать хотя бы одну букву или цифру!'
+                text = f"{self.format_text(text_in_message)} - отправь боту сообщение с названием " \
+                       f"твоей будущей цели, например, <code>Автомобиль</code>"
+                try:
+                    await self.bot.edit_head_caption(text, user_id,
+                                                     self.dict_user[user_id]['messages'][-1],
+                                                     self.build_keyboard(keyboard_back, 1))
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+                except TelegramBadRequest:
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+            else:
+                goal_name = check_name_goal
+                self.dict_goal[row_id]['goal_name'] = goal_name
+                sum_goal = '0'
+                self.dict_goal[row_id]['sum_goal'] = float(sum_goal)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_sum_goal': 'Готово ✅'}
+                text_in_message = 'Теперь нужна сумма, которую Вы хотите накопить 💸'
+                text = f"Наименование цели: {self.format_text(goal_name)}\n" \
+                       f"{self.format_text(text_in_message)} - введите сумму в рублях, " \
+                       f"которую планируете накопить для достижения цели\n" \
+                       f"Сумма цели: {self.format_text(sum_goal)} ₽"
+                await self.bot.edit_head_caption(text, user_id,
                                                  self.dict_user[user_id]['messages'][-1],
                                                  self.build_keyboard(keyboard_calculater, 3, button_done))
-            else:
-                answer = await self.bot.push_photo(message.chat.id, text,
-                                                   self.build_keyboard(keyboard_calculater, 3, button_done),
-                                                   self.bot.logo_goal_menu)
-                self.dict_user[user_id]['messages'] = await self.delete_messages(user_id,
-                                                                                 self.dict_user[user_id]['messages'])
-                self.dict_user[user_id]['messages'].append(str(answer.message_id))
+                self.dict_user[user_id]['history'].append("add_sum_goal")
         else:
-            answer = await self.bot.push_photo(message.chat.id, text,
-                                               self.build_keyboard(keyboard_calculater, 3, button_done),
-                                               self.bot.logo_goal_menu)
-            await self.bot.delete_messages_chat(message.chat.id, [message.message_id])
-            self.dict_user[user_id]['messages'] = await self.delete_messages(user_id,
-                                                                             self.dict_user[user_id]['messages'])
-            self.dict_user[user_id]['messages'].append(str(answer.message_id))
-            self.dict_user[user_id]['history'].append("add_name_goal")
+            user_id = call_back.from_user.id
+            row_id = await self.execute.check_new_goal(user_id)
+            self.dict_goal[row_id]['goal_name'] = ""
+            keyboard_back = {'back': 'Назад 🔙'}
+            text_in_message = 'Давай определим твою цель! Напиши ее ✍'
+            text = f"{self.format_text(text_in_message)} - отправь боту сообщение с названием твоей будущей цели, " \
+                   f"например, <code>Автомобиль</code>"
+            if back_history == 'add_sum_goal':
+                await self.bot.edit_head_caption(text, user_id,
+                                                 self.dict_user[user_id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_back, 1))
+            else:
+                answer = await self.bot.push_photo(user_id, text,
+                                                   self.build_keyboard(keyboard_back, 1),
+                                                   self.bot.logo_goal_menu)
+                self.dict_user[user_id]['messages'] = await self.delete_messages(
+                    user_id, self.dict_user[user_id]['messages'])
+                self.dict_user[user_id]['messages'].append(str(answer.message_id))
         await self.execute.update_user(user_id, self.dict_user[user_id])
         return True
 
     async def show_change(self, call_back: CallbackQuery):
-        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_goal':
+        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
             await self.change_sum_goal(call_back)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
-            await self.change_income_user(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_user':
-            await self.change_income_frequency(call_back)
+            await self.change_income_user(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_frequency':
+            await self.change_income_frequency(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
             await self.change_duration(call_back)
         else:
             print(f"Калькулятор там, где не нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
@@ -391,7 +537,7 @@ class Function:
                f"Количество поступлений: {self.format_text(income_frequency)}\n" \
                f"{self.format_text(text_in_message)}\n" \
                f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-               f"'Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
+               f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
         try:
             await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                              self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -401,13 +547,13 @@ class Function:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
 
     async def show_minus(self, call_back: CallbackQuery):
-        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_goal':
+        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
             await self.minus_sum_goal(call_back)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
-            await self.minus_income_user(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_user':
-            await self.minus_income_frequency(call_back)
+            await self.minus_income_user(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_frequency':
+            await self.minus_income_frequency(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
             await self.minus_duration(call_back)
         else:
             print(f"Калькулятор там, где не нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
@@ -496,7 +642,7 @@ class Function:
                f"Количество поступлений: {self.format_text(income_frequency)}\n" \
                f"{self.format_text(text_in_message)}\n" \
                f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-               f"'Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
+               f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
         try:
             await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                              self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -506,13 +652,13 @@ class Function:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
 
     async def show_plus(self, call_back: CallbackQuery):
-        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_goal':
+        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
             await self.plus_sum_goal(call_back)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
-            await self.plus_income_user(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_user':
-            await self.plus_income_frequency(call_back)
+            await self.plus_income_user(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_frequency':
+            await self.plus_income_frequency(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
             await self.plus_duration(call_back)
         else:
             print(f"Калькулятор там, где не нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
@@ -601,7 +747,7 @@ class Function:
                f"Количество поступлений: {self.format_text(income_frequency)}\n" \
                f"{self.format_text(text_in_message)}\n" \
                f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-               f"'Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
+               f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
         try:
             await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                              self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -611,13 +757,13 @@ class Function:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
 
     async def show_delete(self, call_back: CallbackQuery):
-        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_goal':
+        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
             await self.delete_sum_goal(call_back)
-        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
-            await self.delete_income_user(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_user':
-            await self.delete_income_frequency(call_back)
+            await self.delete_income_user(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_income_frequency':
+            await self.delete_income_frequency(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
             await self.delete_duration(call_back)
         else:
             print(f"Калькулятор там, где не нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
@@ -706,7 +852,7 @@ class Function:
                f"Количество поступлений: {self.format_text(income_frequency)}\n" \
                f"{self.format_text(text_in_message)}\n" \
                f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-               f"'Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
+               f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
         try:
             await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                              self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -718,18 +864,49 @@ class Function:
     async def show_done_sum_goal(self, call_back: CallbackQuery, back_history: str = None):
         row_id = await self.execute.check_new_goal(call_back.from_user.id)
         name_goal = self.dict_goal[row_id]['goal_name']
-        sum_goal = str(int(self.dict_goal[row_id]['sum_goal']))
-        if back_history is not None:
-            amount = str(int(self.dict_goal[row_id]['income_user']))
+        sum_goal = int(self.dict_goal[row_id]['sum_goal'])
+        if back_history is None:
+            check_sum_goal = await self.check_sum(call_back, sum_goal,
+                                                  f"Сумма цели не может быть равна {str(sum_goal)} рублей")
+            if not check_sum_goal:
+                sum_goal = '0'
+                self.dict_goal[row_id]['sum_goal'] = float(sum_goal)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_sum_goal': 'Готово ✅'}
+                text_in_message = 'Теперь нужна сумма, которую Вы хотите накопить 💸'
+                text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                       f"{self.format_text(text_in_message)} - введите сумму в рублях, " \
+                       f"которую планируете накопить для достижения цели\n" \
+                       f"Сумма цели: {self.format_text(sum_goal)} ₽"
+                try:
+                    await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                     self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                     self.build_keyboard(keyboard_calculater, 3, button_done))
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+                except TelegramBadRequest:
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+            else:
+                income_user = '0'
+                self.dict_goal[row_id]['income_user'] = float(income_user)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_income_user': 'Готово ✅'}
+                text_in_message = 'Укажите Ваш доход 💰'
+                text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                       f"Сумма цели: {self.format_text(str(sum_goal))} ₽\n" \
+                       f"{self.format_text(text_in_message)} - введите доход в рублях.\n" \
+                       f"Ваш доход: {self.format_text(income_user)} ₽"
+                await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                 self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_calculater, 3, button_done))
+                self.dict_user[call_back.from_user.id]['history'].append("add_income_user")
         else:
-            amount = '0'
-        keyboard_calculater = await self.keyboard.get_calculater()
-        button_done = {'done_income_user': 'Готово ✅'}
-        text = f"Наименование цели: {self.format_text(name_goal)}\n" \
-               f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
-               f"{self.format_text('Укажите Ваш доход 💰')} - введите доход в рублях.\n" \
-               f"Ваш доход: {self.format_text(amount)} ₽"
-        if back_history is not None:
+            keyboard_calculater = await self.keyboard.get_calculater()
+            button_done = {'done_sum_goal': 'Готово ✅'}
+            text_in_message = 'Теперь нужна сумма, которую Вы хотите накопить 💸'
+            text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                   f"{self.format_text(text_in_message)} - введите сумму в рублях, " \
+                   f"которую планируете накопить для достижения цели\n" \
+                   f"Сумма цели: {self.format_text(str(sum_goal))} ₽"
             if back_history == 'add_income_user':
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -741,11 +918,6 @@ class Function:
                 self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
                     call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
                 self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        else:
-            await self.bot.edit_head_caption(text, call_back.message.chat.id,
-                                             self.dict_user[call_back.from_user.id]['messages'][-1],
-                                             self.build_keyboard(keyboard_calculater, 3, button_done))
-            self.dict_user[call_back.from_user.id]['history'].append("add_sum_goal")
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
@@ -753,19 +925,50 @@ class Function:
         row_id = await self.execute.check_new_goal(call_back.from_user.id)
         name_goal = self.dict_goal[row_id]['goal_name']
         sum_goal = str(int(self.dict_goal[row_id]['sum_goal']))
-        income_user = str(int(self.dict_goal[row_id]['income_user']))
-        if back_history is not None:
-            frequency = str(int(self.dict_goal[row_id]['income_frequency']))
+        income_user = int(self.dict_goal[row_id]['income_user'])
+        if back_history is None:
+            check_sum_goal = await self.check_sum(call_back, income_user,
+                                                  f"Ваш доход не может быть равен {str(income_user)} рублей")
+            if not check_sum_goal:
+                income_user = '0'
+                self.dict_goal[row_id]['income_user'] = float(income_user)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_income_user': 'Готово ✅'}
+                text_in_message = 'Укажите Ваш доход 💰'
+                text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                       f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                       f"{self.format_text(text_in_message)} - введите доход в рублях.\n" \
+                       f"Ваш доход: {self.format_text(income_user)} ₽"
+                try:
+                    await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                     self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                     self.build_keyboard(keyboard_calculater, 3, button_done))
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+                except TelegramBadRequest:
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+            else:
+                income_frequency = '0'
+                self.dict_goal[row_id]['income_frequency'] = int(income_frequency)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_income_frequency': 'Готово ✅'}
+                text_in_message = 'Пожалуйста, укажите сколько раз в месяц Вы получаете доход.'
+                text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                       f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                       f"Ваш доход: {self.format_text(str(income_user))} ₽\n" \
+                       f"{self.format_text(text_in_message)}\n" \
+                       f"Количество поступлений в месяц: {self.format_text(income_frequency)}"
+                await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                 self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_calculater, 3, button_done))
+                self.dict_user[call_back.from_user.id]['history'].append("add_income_frequency")
         else:
-            frequency = '0'
-        keyboard_calculater = await self.keyboard.get_calculater()
-        button_done = {'done_income_frequency': 'Готово ✅'}
-        text = f"Наименование цели: {self.format_text(name_goal)}\n" \
-               f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
-               f"Ваш доход: {self.format_text(income_user)} ₽\n" \
-               f"{self.format_text('Пожалуйста, укажите сколько раз в месяц Вы получаете доход.')}\n" \
-               f"Количество поступлений в месяц: {self.format_text(frequency)}"
-        if back_history is not None:
+            keyboard_calculater = await self.keyboard.get_calculater()
+            button_done = {'done_income_user': 'Готово ✅'}
+            text_in_message = 'Укажите Ваш доход 💰'
+            text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                   f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                   f"{self.format_text(text_in_message)} - введите доход в рублях.\n" \
+                   f"Ваш доход: {self.format_text(str(income_user))} ₽"
             if back_history == 'add_income_frequency':
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -777,11 +980,6 @@ class Function:
                 self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
                     call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
                 self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        else:
-            await self.bot.edit_head_caption(text, call_back.message.chat.id,
-                                             self.dict_user[call_back.from_user.id]['messages'][-1],
-                                             self.build_keyboard(keyboard_calculater, 3, button_done))
-            self.dict_user[call_back.from_user.id]['history'].append("add_income_user")
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
@@ -790,28 +988,57 @@ class Function:
         name_goal = self.dict_goal[row_id]['goal_name']
         sum_goal = str(int(self.dict_goal[row_id]['sum_goal']))
         income_user = str(int(self.dict_goal[row_id]['income_user']))
-        income_frequency = str(int(self.dict_goal[row_id]['income_frequency']))
-        if back_history is not None:
-            duration = str(int(self.dict_goal[row_id]['duration']))
-            if int(duration) == 0:
-                monthly_payment = '0'
+        income_frequency = int(self.dict_goal[row_id]['income_frequency'])
+        if back_history is None:
+            check_frequency = await self.check_sum(call_back, self.dict_goal[row_id]['income_frequency'],
+                                                   f'Количество поступлений доходов не может быть равно '
+                                                   f'{str(income_frequency)}')
+            if not check_frequency:
+                income_frequency = '0'
+                self.dict_goal[row_id]['income_frequency'] = income_frequency
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_income_frequency': 'Готово ✅'}
+                text_in_message = 'Пожалуйста, укажите сколько раз в месяц Вы получаете доход.'
+                text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                       f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                       f"Ваш доход: {self.format_text(income_user)} ₽\n" \
+                       f"{self.format_text(text_in_message)}\n" \
+                       f"Количество поступлений в месяц: {self.format_text(income_frequency)}"
+                try:
+                    await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                     self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                     self.build_keyboard(keyboard_calculater, 3, button_done))
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
+                except TelegramBadRequest:
+                    await self.execute.update_goal(row_id, self.dict_goal[row_id])
             else:
-                monthly_payment = str(int(int(self.dict_goal[row_id]['sum_goal']) / int(duration)))
+                duration = '0'
+                monthly_payment = '0'
+                self.dict_goal[row_id]['duration'] = int(duration)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_duration': 'Готово ✅'}
+                text_in_message = 'Через сколько месяцев ты хочешь накопить эту сумму? Помни, что месячный платеж ' \
+                                  'не должен превышать 50% от твоего совокупного дохода!'
+                text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                       f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                       f"Ваш доход: {self.format_text(income_user)} ₽\n" \
+                       f"Количество поступлений: {self.format_text(str(income_frequency))}\n" \
+                       f"{self.format_text(text_in_message)}\n" \
+                       f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
+                       f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
+                await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                 self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_calculater, 3, button_done))
+                self.dict_user[call_back.from_user.id]['history'].append("add_duration")
         else:
-            duration = '0'
-            monthly_payment = '0'
-        keyboard_calculater = await self.keyboard.get_calculater()
-        button_done = {'done_duration': 'Готово ✅'}
-        text_in_message = 'Через сколько месяцев ты хочешь накопить эту сумму? Помни, что месячный платеж ' \
-                          'не должен превышать 50% от твоего совокупного дохода!'
-        text = f"Наименование цели: {self.format_text(name_goal)}\n" \
-               f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
-               f"Ваш доход: {self.format_text(income_user)} ₽\n" \
-               f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-               f"{self.format_text(text_in_message)}\n" \
-               f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-               f"'Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
-        if back_history is not None:
+            keyboard_calculater = await self.keyboard.get_calculater()
+            button_done = {'done_income_frequency': 'Готово ✅'}
+            text_in_message = 'Пожалуйста, укажите сколько раз в месяц Вы получаете доход.'
+            text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                   f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                   f"Ваш доход: {self.format_text(income_user)} ₽\n" \
+                   f"{self.format_text(text_in_message)}\n" \
+                   f"Количество поступлений в месяц: {self.format_text(str(income_frequency))}"
             if back_history == 'add_duration':
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -823,11 +1050,6 @@ class Function:
                 self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
                     call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
                 self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        else:
-            await self.bot.edit_head_caption(text, call_back.message.chat.id,
-                                             self.dict_user[call_back.from_user.id]['messages'][-1],
-                                             self.build_keyboard(keyboard_calculater, 3, button_done))
-            self.dict_user[call_back.from_user.id]['history'].append("add_income_frequency")
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
@@ -837,7 +1059,7 @@ class Function:
         sum_goal = str(int(self.dict_goal[row_id]['sum_goal']))
         income_user = str(int(self.dict_goal[row_id]['income_user']))
         income_frequency = str(int(self.dict_goal[row_id]['income_frequency']))
-        duration = str(int(self.dict_goal[row_id]['duration']))
+        duration = self.dict_goal[row_id]['duration']
         if int(duration) == 0:
             monthly_payment = '0'
         else:
@@ -858,7 +1080,7 @@ class Function:
                        f"Количество поступлений: {self.format_text(income_frequency)}\n" \
                        f"{self.format_text(text_in_message)}\n" \
                        f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-                       f"'Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
+                       f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽"
                 try:
                     await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                      self.dict_user[call_back.from_user.id]['messages'][-1],
@@ -877,34 +1099,33 @@ class Function:
                        f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
                        f"Ваш доход: {self.format_text(income_user)} ₽\n" \
                        f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-                       f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-                       f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
+                       f"Срок достижения цели: {self.format_text(str(duration))} мес.\n" \
+                       f"Каждый месяц нужно откладывать: {self.format_text(str(monthly_payment))} ₽\n" \
                        f"{self.format_text(text_in_message)}\n" \
                        f"Дни напоминания о цели: {self.format_text(weekday)}"
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
                                                  self.build_keyboard(keyboard_weekday, 3, button_done))
-                self.dict_user[call_back.from_user.id]['history'].append("add_duration")
+                self.dict_user[call_back.from_user.id]['history'].append("add_reminder_days")
         else:
-            weekday = await self.get_str_weekday(self.dict_goal[row_id]['reminder_days'])
-            keyboard_weekday = await self.keyboard.get_weekday()
-            button_done = {'done_reminder_days': 'Готово ✅'}
-            text_in_message = 'Давайте установим, в какие дни недели получать напоминание о цели.'
+            keyboard_calculater = await self.keyboard.get_calculater()
+            button_done = {'done_duration': 'Готово ✅'}
+            text_in_message = 'Через сколько месяцев ты хочешь накопить эту сумму? Помни, что месячный платеж ' \
+                              'не должен превышать 50% от твоего совокупного дохода!'
             text = f"Наименование цели: {self.format_text(name_goal)}\n" \
                    f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
                    f"Ваш доход: {self.format_text(income_user)} ₽\n" \
                    f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-                   f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
-                   f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
                    f"{self.format_text(text_in_message)}\n" \
-                   f"Дни напоминания о цели: {self.format_text(weekday)}"
+                   f"Срок достижения цели: {self.format_text(str(duration))} мес.\n" \
+                   f"Каждый месяц нужно откладывать: {self.format_text(str(monthly_payment))} ₽"
             if back_history == 'add_reminder_days':
                 await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                                  self.dict_user[call_back.from_user.id]['messages'][-1],
-                                                 self.build_keyboard(keyboard_weekday, 3, button_done))
+                                                 self.build_keyboard(keyboard_calculater, 3, button_done))
             else:
                 answer = await self.bot.push_photo(call_back.message.chat.id, text,
-                                                   self.build_keyboard(keyboard_weekday, 3, button_done),
+                                                   self.build_keyboard(keyboard_calculater, 3, button_done),
                                                    self.bot.logo_goal_menu)
                 self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
                     call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
@@ -955,14 +1176,14 @@ class Function:
         duration = str(int(self.dict_goal[row_id]['duration']))
         monthly_payment = str(int(int(self.dict_goal[row_id]['sum_goal']) / int(duration)))
         weekday = await self.get_str_weekday(self.dict_goal[row_id]['reminder_days'])
-        keyboard_time = await self.keyboard.get_time_reminder()
-        button_done = {'done_reminder_time': 'Готово ✅'}
         if back_history is None:
             if weekday == 'Не напоминать о цели':
                 time_reminder = 'Не напоминать о цели'
             else:
                 time_reminder = '10:00'
             self.dict_goal[row_id]['reminder_time'] = time_reminder
+            keyboard_time = await self.keyboard.get_time_reminder()
+            button_done = {'done_reminder_time': 'Готово ✅'}
             text_in_message = 'Установите, в какое время будет удобно получать напоминание о цели.'
             text = f"Наименование цели: {self.format_text(name_goal)}\n" \
                    f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
@@ -976,25 +1197,30 @@ class Function:
             await self.bot.edit_head_caption(text, call_back.message.chat.id,
                                              self.dict_user[call_back.from_user.id]['messages'][-1],
                                              self.build_keyboard(keyboard_time, 5, button_done))
-            self.dict_user[call_back.from_user.id]['history'].append("add_reminder_days")
+            self.dict_user[call_back.from_user.id]['history'].append("add_reminder_time")
         else:
-            time_reminder = self.dict_goal[row_id]['reminder_time']
-            text_in_message = 'Установите, в какое время будет удобно получать напоминание о цели.'
+            keyboard_weekday = await self.keyboard.get_weekday()
+            button_done = {'done_reminder_days': 'Готово ✅'}
+            text_in_message = 'Давайте установим, в какие дни недели получать напоминание о цели.'
             text = f"Наименование цели: {self.format_text(name_goal)}\n" \
                    f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
                    f"Ваш доход: {self.format_text(income_user)} ₽\n" \
                    f"Количество поступлений: {self.format_text(income_frequency)}\n" \
                    f"Срок достижения цели: {self.format_text(duration)} мес.\n" \
                    f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
-                   f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
                    f"{self.format_text(text_in_message)}\n" \
-                   f"Время напоминания о цели: {self.format_text(time_reminder)}"
-            answer = await self.bot.push_photo(call_back.message.chat.id, text,
-                                               self.build_keyboard(keyboard_time, 5, button_done),
-                                               self.bot.logo_goal_menu)
-            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
-                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
-            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+                   f"Дни напоминания о цели: {self.format_text(weekday)}"
+            if back_history == 'add_reminder_time':
+                await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                 self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_weekday, 3, button_done))
+            else:
+                answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                                   self.build_keyboard(keyboard_weekday, 3, button_done),
+                                                   self.bot.logo_goal_menu)
+                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
@@ -1031,7 +1257,7 @@ class Function:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
             return True
 
-    async def show_done_reminder_time(self, call_back: CallbackQuery):
+    async def show_done_reminder_time(self, call_back: CallbackQuery, back_history: str = None):
         row_id = await self.execute.check_new_goal(call_back.from_user.id)
         name_goal = self.dict_goal[row_id]['goal_name']
         sum_goal = str(int(self.dict_goal[row_id]['sum_goal']))
@@ -1041,30 +1267,51 @@ class Function:
         monthly_payment = str(int(int(self.dict_goal[row_id]['sum_goal']) / int(duration)))
         weekday = await self.get_str_weekday(self.dict_goal[row_id]['reminder_days'])
         time_reminder = self.dict_goal[row_id]['reminder_time']
-        current_date = date.today()
-        future_date = str(current_date + relativedelta(months=+duration))
-        self.dict_goal[row_id]['data_finish'] = future_date
-        data_in_message = f"{self.format_text(future_date.split('-')[2])}." \
-                          f"{self.format_text(future_date.split('-')[1])}." \
-                          f"{self.format_text(future_date.split('-')[0])} г."
-        self.dict_goal[row_id]['status_goal'] = 'current'
-        await self.execute.update_goal(row_id, self.dict_goal[row_id])
-        text = f"{self.format_text('Добавлена новая цель:')}\n" \
-               f"Наименование цели: {self.format_text(name_goal)}\n" \
-               f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
-               f"Ваш доход: {self.format_text(income_user)} ₽\n" \
-               f"Количество поступлений: {self.format_text(income_frequency)}\n" \
-               f"Срок достижения цели: {self.format_text(str(duration))} мес.\n" \
-               f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
-               f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
-               f"Время напоминания о цели: {self.format_text(time_reminder)}\n" \
-               f"Цель рассчитана до: {self.format_text(data_in_message)}"
-        self.dict_user[call_back.from_user.id]['history'] = ['start']
-        first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
-        await self.bot.edit_head_caption(text, call_back.message.chat.id,
-                                         self.dict_user[call_back.from_user.id]['messages'][-1],
-                                         self.build_keyboard(first_keyboard, 1))
-        await self.dispatcher.scheduler.add_new_reminder(row_id, self.dict_goal[row_id])
+        if back_history is None:
+            current_date = date.today()
+            future_date = str(current_date + relativedelta(months=+duration))
+            self.dict_goal[row_id]['data_finish'] = future_date
+            data_in_message = f"{self.format_text(future_date.split('-')[2])}." \
+                              f"{self.format_text(future_date.split('-')[1])}." \
+                              f"{self.format_text(future_date.split('-')[0])} г."
+            self.dict_goal[row_id]['status_goal'] = 'current'
+            await self.execute.update_goal(row_id, self.dict_goal[row_id])
+            text = f"{self.format_text('Добавлена новая цель:')}\n" \
+                   f"Наименование цели: {self.format_text(name_goal)}\n" \
+                   f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                   f"Ваш доход: {self.format_text(income_user)} ₽\n" \
+                   f"Количество поступлений: {self.format_text(income_frequency)}\n" \
+                   f"Срок достижения цели: {self.format_text(str(duration))} мес.\n" \
+                   f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
+                   f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
+                   f"Время напоминания о цели: {self.format_text(time_reminder)}\n" \
+                   f"Цель рассчитана до: {self.format_text(data_in_message)}"
+            self.dict_user[call_back.from_user.id]['history'] = ['start']
+            first_keyboard = await self.keyboard.get_first_menu(self.dict_user[call_back.from_user.id]['history'])
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(first_keyboard, 1))
+            await self.dispatcher.scheduler.add_new_reminder(row_id, self.dict_goal[row_id])
+        else:
+            keyboard_time = await self.keyboard.get_time_reminder()
+            button_done = {'done_reminder_time': 'Готово ✅'}
+            text_in_message = 'Установите, в какое время будет удобно получать напоминание о цели.'
+            text = f"Наименование цели: {self.format_text(name_goal)}\n" \
+                   f"Сумма цели: {self.format_text(sum_goal)} ₽\n" \
+                   f"Ваш доход: {self.format_text(income_user)} ₽\n" \
+                   f"Количество поступлений: {self.format_text(income_frequency)}\n" \
+                   f"Срок достижения цели: {self.format_text(str(duration))} мес.\n" \
+                   f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
+                   f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
+                   f"{self.format_text(text_in_message)}\n" \
+                   f"Время напоминания о цели: {self.format_text(time_reminder)}"
+
+            answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                               self.build_keyboard(keyboard_time, 5, button_done),
+                                               self.bot.logo_goal_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
@@ -1111,6 +1358,13 @@ class Function:
         else:
             return True
 
+    async def check_sum(self, call_back: CallbackQuery, value_sum: int, alert_message: str):
+        if value_sum == 0:
+            await self.bot.alert_message(call_back.id, alert_message)
+            return False
+        else:
+            return True
+
     async def get_str_weekday(self, dict_reminder_days: dict) -> str:
         dict_weekday = await self.keyboard.get_weekday()
         list_weekday = []
@@ -1133,15 +1387,17 @@ class Function:
         return monthly_payment, total_income
 
     @staticmethod
-    async def check_text(string_text: str) -> str:
+    async def check_text(string_text: str):
         arr_text = string_text.split()
         new_arr_text = []
         for item in arr_text:
             new_item = re.sub(r"[^ \w]", '', item)
             if new_item != '':
                 new_arr_text.append(new_item)
-        new_string = ' '.join(new_arr_text)
-        return new_string
+        if len(new_arr_text) == 0:
+            return False
+        else:
+            return ' '.join(new_arr_text)
 
     @staticmethod
     async def check_email(string_text: str):

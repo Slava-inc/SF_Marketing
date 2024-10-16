@@ -302,20 +302,9 @@ class Execute:
                               f"'{dict_info_goal['duration']}', '{str_reminder_days}', " \
                               f"'{dict_info_goal['reminder_time']}', '{dict_info_goal['data_finish']}', " \
                               f"'{dict_info_goal['status_goal']}') "
-            try:
-                await cursor.execute(sql_insert_goal)
-                await self.conn.commit()
-                goal_id = await self.get_row_id(table_name='GOAL')
-                id = await self.get_row_id(table_name='CATEGORY_OUTLAY')
-                if id == None:
-                    id = 1
-                dict_info_category = {'user_id': dict_info_goal['user_id'], 
-                                      'name': dict_info_goal['goal_name'],
-                                      'goal_id': goal_id - 1}  
-                await self.set_category_outlay(id=id, dict_info=dict_info_category)              
-                return cursor.lastrowid
-            except Exception as e:
-                print(str(e))
+            await cursor.execute(sql_insert_goal)
+            await self.conn.commit()
+            return cursor.lastrowid
 
     async def update_goal(self, row_id: int, dict_info_goal: dict):
         try:
