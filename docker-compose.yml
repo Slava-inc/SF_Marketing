@@ -1,0 +1,31 @@
+version: "3.12"
+services:
+  Dockerfile:
+    FinAppBot:
+      container_name: FinAppBot
+      image: finapp
+
+      build: .
+
+      environment:
+        - .env
+
+      ports:
+        - "443:443"
+
+      volumes:
+        - ./logs:/~/FinAppBot/logs
+
+      restart: on-failure
+
+  postgres:
+    image: postgres:13.3
+    environment:
+      POSTGRES_DB: "finapp"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "finapp"
+    volumes:
+      - /usr/src/app:/docker-entrypoint-initdb.d
+      - /usr/src/app:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
