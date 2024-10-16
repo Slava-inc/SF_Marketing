@@ -1,7 +1,6 @@
 import asyncio
-import os
-import json
 from database_requests import Execute
+import os
 
 TABLES = [f"CREATE TABLE IF NOT EXISTS USERS ("
                                   f"ID INTEGER PRIMARY KEY, "
@@ -57,7 +56,8 @@ TABLES = [f"CREATE TABLE IF NOT EXISTS USERS ("
                                   f"FOREIGN KEY (CATEGORY_IN) REFERENCES CATEGORY_INCOME (ID) )",]
 
 if __name__ == "__main__":
-    base = Execute()
+    base = Execute(os.path.join(os.path.split(os.path.dirname(__file__))[0], "SF_marketing/tests/db.sqlite")
+)
     asyncio.run(base.create_data_base())
 
     for table in TABLES:
