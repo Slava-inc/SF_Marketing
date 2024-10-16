@@ -94,7 +94,7 @@ class Function:
         return True
 
     async def answer_ai(self, message: Message):
-        answer_ai = await self.ai.get_gigachat_response(message.text)
+        answer_ai = await self.ai.answer_ai(message.text)
         back_ai = {'back': 'Выйти из виртуального ассистента 🚪'}
         answer = await self.answer_message(message, answer_ai, self.build_keyboard(back_ai, 1))
         self.dict_user[message.from_user.id]['messages'].append(str(message.message_id))
