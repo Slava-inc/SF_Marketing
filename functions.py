@@ -23,11 +23,14 @@ class Function:
         self.bot = bot
         self.dispatcher = dispatcher
         self.keyboard = KeyBoardBot()
+        self.page_goal = self.keyboard.get_pages_goal
         self.execute = Execute()
         self.info_pdf = GetTextOCR()
         self.ai = AI(os.environ["TOKEN_SBER"])
         self.dict_user = asyncio.run(self.execute.get_dict_user)
         self.dict_goal = asyncio.run(self.execute.get_dict_goal)
+        self.dict_outlay = asyncio.run(self.execute.get_dict_outlay)
+        self.dict_income = asyncio.run(self.execute.get_dict_income)
 
     async def show_back(self, call_back: CallbackQuery):
         try:
@@ -39,9 +42,9 @@ class Function:
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'goal':
                 await self.show_add_goal(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'outlay':
-                await self.show_outlay(call_back)
+                await self.show_add_new_outlay(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'income':
-                await self.show_income(call_back)
+                await self.show_add_new_income(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_goal_name':
                 await self.show_add_name_goal(call_back.message, previous_history, call_back)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
@@ -56,6 +59,16 @@ class Function:
                 await self.show_done_reminder_days(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_reminder_time':
                 await self.show_done_reminder_time(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] in self.page_goal.keys():
+                await self.show_list_goals(call_back, self.dict_user[call_back.from_user.id]['history'][-1])
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_outlay':
+                await self.show_add_name_bank_outlay(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_income':
+                await self.show_add_name_bank_income(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_bank_outlay':
+                await self.show_add_recipient_funds_outlay(call_back, previous_history)
+            elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_bank_income':
+                await self.show_add_sender_funds_income(call_back, previous_history)
             else:
                 await self.return_start(call_back)
             return True
@@ -115,6 +128,7 @@ class Function:
             await self.delete_messages(message.from_user.id, [message.message_id])
         else:
             if message.from_user.id not in self.dict_user.keys():
+                await self.execute.set_default_category(message.from_user.id)
                 self.dict_user[message.from_user.id] = {'history': ['start'], 'messages': [],
                                                         'first_name': message.from_user.first_name,
                                                         'last_name': message.from_user.last_name,
@@ -131,7 +145,10 @@ class Function:
                                                                                               message.from_user.id][
                                                                                               'messages'])
             self.dict_user[message.from_user.id]['messages'].append(str(answer.message_id))
-            self.dict_user[message.from_user.id]['history'].append('start')
+            self.dict_user[message.from_user.id]['history'] = ['start']
+            self.dict_user[message.from_user.id]['first_name'] = message.from_user.first_name
+            self.dict_user[message.from_user.id]['last_name'] = message.from_user.last_name
+            self.dict_user[message.from_user.id]['user_name'] = message.from_user.username
             await self.execute.update_user(message.from_user.id, self.dict_user[message.from_user.id])
         return True
 
@@ -172,12 +189,10 @@ class Function:
                                                         'last_name': message.from_user.last_name,
                                                         'user_name': message.from_user.username}
             keyboard_outlay = await self.keyboard.get_outlay_menu()
-            text = f"{self.format_text('Добавить новые расходы ➕')} " \
-                   f"- добавьте расходы, отправив файл PDF или вручную\n" \
+            text = f"{self.format_text('Добавить новые расходы ➕')} - добавьте новые расходы\n" \
                    f"{self.format_text('Показать список расходов 👀')} " \
                    f"- вывести на экран список всех расходов за месяц\n" \
                    f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
-                   f"{self.format_text('Изменить категории расходов ⚙')} - изменить список категорий расходов\n" \
                    f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
             answer = await self.bot.push_photo(message.chat.id, text, self.build_keyboard(keyboard_outlay, 1),
                                                self.bot.logo_main_menu)
@@ -202,12 +217,10 @@ class Function:
                                                         'last_name': message.from_user.last_name,
                                                         'user_name': message.from_user.username}
             keyboard_income = await self.keyboard.get_income_menu()
-            text = f"{self.format_text('Добавить новые доходы ➕')} " \
-                   f"- добавьте доходы, отправив файл PDF или вручную\n" \
+            text = f"{self.format_text('Добавить новые доходы ➕')} - добавьте новые доходы\n" \
                    f"{self.format_text('Показать список доходов 👀')} " \
                    f"- вывести на экран список всех доходов за месяц\n" \
                    f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
-                   f"{self.format_text('Изменить категории доходов ⚙')} - изменить список категорий доходов\n" \
                    f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
             answer = await self.bot.push_photo(message.chat.id, text, self.build_keyboard(keyboard_income, 1),
                                                self.bot.logo_main_menu)
@@ -265,7 +278,7 @@ class Function:
         await self.execute.update_user(user_id, self.dict_user[user_id])
         return True
 
-    async def show_goal(self, call_back: CallbackQuery):
+    async def show_goal(self, call_back: CallbackQuery, back_history: str = None):
         keyboard_goal = await self.keyboard.get_goal_menu()
         text = f"{self.format_text('Добавить новую цель ➕')} - " \
                f"добавить новую цель, на которую собираетесь копить\n" \
@@ -275,43 +288,42 @@ class Function:
         self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
             call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
         self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
+        if back_history is None:
+            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
-    async def show_outlay(self, call_back: CallbackQuery):
+    async def show_outlay(self, call_back: CallbackQuery, back_history: str = None):
         keyboard_outlay = await self.keyboard.get_outlay_menu()
-        text = f"{self.format_text('Добавить новые расходы ➕')} " \
-               f"- добавьте расходы, отправив файл PDF или вручную\n" \
+        text = f"{self.format_text('Добавить новые расходы ➕')} - добавьте новые расходы\n" \
                f"{self.format_text('Показать список расходов 👀')} " \
                f"- вывести на экран список всех расходов за месяц\n" \
                f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
-               f"{self.format_text('Изменить категории расходов ⚙')} - изменить список категорий расходов\n" \
                f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
         answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_outlay, 1),
                                            self.bot.logo_outlay_menu)
         self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
             call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
         self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
+        if back_history is None:
+            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
-    async def show_income(self, call_back: CallbackQuery):
+    async def show_income(self, call_back: CallbackQuery, back_history: str = None):
         keyboard_income = await self.keyboard.get_income_menu()
-        text = f"{self.format_text('Добавить новые доходы ➕')} " \
-               f"- добавьте доходы, отправив файл PDF или вручную\n" \
+        text = f"{self.format_text('Добавить новые доходы ➕')} - добавьте новые доходы\n" \
                f"{self.format_text('Показать список доходов 👀')} " \
                f"- вывести на экран список всех доходов за месяц\n" \
                f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
-               f"{self.format_text('Изменить категории доходов ⚙')} - изменить список категорий доходов\n" \
                f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
         answer = await self.bot.push_photo(call_back.message.chat.id, text, self.build_keyboard(keyboard_income, 1),
                                            self.bot.logo_income_menu)
         self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
             call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
         self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
-        self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
+        if back_history is None:
+            self.dict_user[call_back.from_user.id]['history'].append(call_back.data)
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
 
@@ -417,6 +429,10 @@ class Function:
             await self.change_income_frequency(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
             await self.change_duration(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_outlay':
+            await self.change_sum_outlay(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_income':
+            await self.change_sum_income(call_back)
         else:
             print(f"Калькулятор там, где не нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
         return True
@@ -513,6 +529,44 @@ class Function:
         except TelegramBadRequest:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
 
+    async def change_sum_outlay(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_outlay(call_back.from_user.id)
+        data_time = self.dict_outlay[row_id]['data_time']
+        amount = await self.get_amount(call_back.message.caption, call_back.data, 'Сумма расходов: ', ' ₽')
+        self.dict_outlay[row_id]['sum_outlay'] = float(amount)
+        keyboard_calculater = await self.keyboard.get_calculater()
+        button_done = {'done_sum_outlay': 'Готово ✅'}
+        text_in_message = 'Введите сумму Ваших расходов 🛒'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата расходов: {self.format_text(data_time)}\n " \
+               f"Сумма расходов: {self.format_text(str(amount))} ₽"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+        except TelegramBadRequest:
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+
+    async def change_sum_income(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_income(call_back.from_user.id)
+        data_time = self.dict_income[row_id]['data_time']
+        amount = await self.get_amount(call_back.message.caption, call_back.data, 'Сумма доходов: ', ' ₽')
+        self.dict_income[row_id]['sum_income'] = float(amount)
+        keyboard_calculater = await self.keyboard.get_calculater()
+        button_done = {'done_sum_income': 'Готово ✅'}
+        text_in_message = 'Введите сумму Ваших доходов 🛒'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата доходов: {self.format_text(data_time)}\n " \
+               f"Сумма доходов: {self.format_text(str(amount))} ₽"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+        except TelegramBadRequest:
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+
     async def show_minus(self, call_back: CallbackQuery):
         if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
             await self.minus_sum_goal(call_back)
@@ -522,6 +576,10 @@ class Function:
             await self.minus_income_frequency(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
             await self.minus_duration(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_outlay':
+            await self.minus_sum_outlay(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_income':
+            await self.minus_sum_income(call_back)
         else:
             print(f"Калькулятор там, где не нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
         return True
@@ -618,6 +676,44 @@ class Function:
         except TelegramBadRequest:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
 
+    async def minus_sum_outlay(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_outlay(call_back.from_user.id)
+        data_time = self.dict_outlay[row_id]['data_time']
+        amount = await self.get_amount_minus(call_back.message.caption, 'Сумма расходов: ', ' ₽')
+        self.dict_outlay[row_id]['sum_outlay'] = float(amount)
+        keyboard_calculater = await self.keyboard.get_calculater()
+        button_done = {'done_sum_outlay': 'Готово ✅'}
+        text_in_message = 'Введите сумму Ваших расходов 🛒'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата расходов: {self.format_text(data_time)}\n " \
+               f"Сумма расходов: {self.format_text(str(amount))} ₽"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+        except TelegramBadRequest:
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+
+    async def minus_sum_income(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_income(call_back.from_user.id)
+        data_time = self.dict_income[row_id]['data_time']
+        amount = await self.get_amount_minus(call_back.message.caption, 'Сумма доходов: ', ' ₽')
+        self.dict_income[row_id]['sum_income'] = float(amount)
+        keyboard_calculater = await self.keyboard.get_calculater()
+        button_done = {'done_sum_income': 'Готово ✅'}
+        text_in_message = 'Введите сумму Ваших доходов 🛒'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата доходов: {self.format_text(data_time)}\n " \
+               f"Сумма доходов: {self.format_text(str(amount))} ₽"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+        except TelegramBadRequest:
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+
     async def show_plus(self, call_back: CallbackQuery):
         if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
             await self.plus_sum_goal(call_back)
@@ -627,6 +723,10 @@ class Function:
             await self.plus_income_frequency(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
             await self.plus_duration(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_outlay':
+            await self.plus_sum_outlay(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_income':
+            await self.plus_sum_income(call_back)
         else:
             print(f"Калькулятор там, где не нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
         return True
@@ -723,6 +823,44 @@ class Function:
         except TelegramBadRequest:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
 
+    async def plus_sum_outlay(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_outlay(call_back.from_user.id)
+        data_time = self.dict_outlay[row_id]['data_time']
+        amount = await self.get_amount_plus(call_back.message.caption, 'Сумма расходов: ', ' ₽')
+        self.dict_outlay[row_id]['sum_outlay'] = float(amount)
+        keyboard_calculater = await self.keyboard.get_calculater()
+        button_done = {'done_sum_outlay': 'Готово ✅'}
+        text_in_message = 'Введите сумму Ваших расходов 🛒'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата расходов: {self.format_text(data_time)}\n " \
+               f"Сумма расходов: {self.format_text(str(amount))} ₽"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+        except TelegramBadRequest:
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+
+    async def plus_sum_income(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_income(call_back.from_user.id)
+        data_time = self.dict_income[row_id]['data_time']
+        amount = await self.get_amount_plus(call_back.message.caption, 'Сумма доходов: ', ' ₽')
+        self.dict_income[row_id]['sum_income'] = float(amount)
+        keyboard_calculater = await self.keyboard.get_calculater()
+        button_done = {'done_sum_income': 'Готово ✅'}
+        text_in_message = 'Введите сумму Ваших доходов 🛒'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата доходов: {self.format_text(data_time)}\n " \
+               f"Сумма доходов: {self.format_text(str(amount))} ₽"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+        except TelegramBadRequest:
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+
     async def show_delete(self, call_back: CallbackQuery):
         if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_goal':
             await self.delete_sum_goal(call_back)
@@ -732,6 +870,10 @@ class Function:
             await self.delete_income_frequency(call_back)
         elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_duration':
             await self.delete_duration(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_outlay':
+            await self.delete_sum_outlay(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_income':
+            await self.delete_sum_income(call_back)
         else:
             print(f"Калькулятор там, где не нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
         return True
@@ -827,6 +969,44 @@ class Function:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
         except TelegramBadRequest:
             await self.execute.update_goal(row_id, self.dict_goal[row_id])
+
+    async def delete_sum_outlay(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_outlay(call_back.from_user.id)
+        data_time = self.dict_outlay[row_id]['data_time']
+        amount = await self.get_amount_delete(call_back.message.caption, 'Сумма расходов: ', ' ₽')
+        self.dict_outlay[row_id]['sum_outlay'] = float(amount)
+        keyboard_calculater = await self.keyboard.get_calculater()
+        button_done = {'done_sum_outlay': 'Готово ✅'}
+        text_in_message = 'Введите сумму Ваших расходов 🛒'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата расходов: {self.format_text(data_time)}\n " \
+               f"Сумма расходов: {self.format_text(str(amount))} ₽"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+        except TelegramBadRequest:
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+
+    async def delete_sum_income(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_income(call_back.from_user.id)
+        data_time = self.dict_income[row_id]['data_time']
+        amount = await self.get_amount_delete(call_back.message.caption, 'Сумма доходов: ', ' ₽')
+        self.dict_income[row_id]['sum_income'] = float(amount)
+        keyboard_calculater = await self.keyboard.get_calculater()
+        button_done = {'done_sum_income': 'Готово ✅'}
+        text_in_message = 'Введите сумму Ваших доходов 🛒'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата доходов: {self.format_text(data_time)}\n " \
+               f"Сумма доходов: {self.format_text(str(amount))} ₽"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+        except TelegramBadRequest:
+            await self.execute.update_income(row_id, self.dict_income[row_id])
 
     async def show_done_sum_goal(self, call_back: CallbackQuery, back_history: str = None):
         row_id = await self.execute.check_new_goal(call_back.from_user.id)
@@ -1281,6 +1461,320 @@ class Function:
             self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
         return True
+
+    async def show_list_goals(self, call_back: CallbackQuery, back_history: str = None, page_show: str = 'Цели Стр.1'):
+        dict_pages_goals = await self.execute.get_pages_goals(call_back.from_user.id)
+        pages = {}
+        for page in dict_pages_goals.keys():
+            pages[page] = page
+        text = f"{self.format_text('Список Ваших целей ниже:')}"
+        if back_history is None:
+            number_page = f"\nСтраница №{page_show.split('Цели Стр.')[1]}"
+            text_by_format = self.format_text(text + number_page)
+            heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                self.build_keyboard(pages, 3),
+                                                self.bot.logo_goal_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(heading.message_id))
+            for key, value in dict_pages_goals[page_show].items():
+                menu_button = {'back': 'Назад 🔙', f'{key}delete_goal': 'Удалить цель 🗑️'}
+                text_goal = await self.keyboard.get_info_goal(value)
+                answer = await self.answer_message(heading, text_goal, self.build_keyboard(menu_button, 2))
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[call_back.from_user.id]['history'].append(page_show)
+        else:
+            number_page = f"\nСтраница №{back_history.split('Цели Стр.')[1]}"
+            text_by_format = self.format_text(text + number_page)
+            heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                self.build_keyboard(pages, 3),
+                                                self.bot.logo_goal_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(heading.message_id))
+            for key, value in dict_pages_goals[back_history].items():
+                menu_button = {'back': 'Назад 🔙', f'{key}delete_goal': 'Удалить цель 🗑️'}
+                text_goal = await self.keyboard.get_info_goal(value)
+                answer = await self.answer_message(heading, text_goal, self.build_keyboard(menu_button, 2))
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_delete_goal(self, call_back: CallbackQuery):
+        row_id = call_back.data.split('delete_goal')[0]
+        await self.dispatcher.scheduler.delete_reminder(int(row_id), self.dict_goal[int(row_id)])
+        await self.execute.delete_goal(int(row_id))
+        self.dict_goal.pop(int(row_id))
+        self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+            call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'],
+            str(call_back.message.message_id), True)
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_add_new_outlay(self, call_back: CallbackQuery, back_history: str = None):
+        if back_history is None:
+            row_id = await self.execute.check_new_outlay(call_back.from_user.id)
+            if not row_id:
+                current_date = str(date.today())
+                data_in_message = f"{current_date.split('-')[2]}." \
+                                  f"{current_date.split('-')[1]}." \
+                                  f"{current_date.split('-')[0]} г."
+                row_id_default_category_out = await self.execute.get_row_id_category_outlay(call_back.from_user.id,
+                                                                                            'Прочие 📋')
+                default_value = {"data_time": data_in_message, "sum_outlay": 0, "name_bank": "",
+                                 "recipient_funds": "", "category_out": row_id_default_category_out,
+                                 "status_outlay": "new"}
+                row_id = await self.execute.insert_outlay(call_back.from_user.id, default_value)
+                default_value['user_id'] = call_back.from_user.id
+                self.dict_outlay[row_id] = default_value
+            data_time = self.dict_outlay[row_id]['data_time']
+            amount = 0
+            keyboard_calculater = await self.keyboard.get_calculater()
+            button_done = {'done_sum_outlay': 'Готово ✅'}
+            text_in_message = 'Введите сумму Ваших расходов 🛒'
+            text = f"{self.format_text(text_in_message)}\n " \
+                   f"Дата расходов: {self.format_text(data_time)}\n " \
+                   f"Сумма расходов: {self.format_text(str(amount))} ₽"
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            self.dict_user[call_back.from_user.id]['history'].append('add_sum_outlay')
+        else:
+            keyboard_outlay = await self.keyboard.get_outlay_menu()
+            text = f"{self.format_text('Добавить новые расходы ➕')} - добавьте новые расходы\n" \
+                   f"{self.format_text('Показать список расходов 👀')} " \
+                   f"- вывести на экран список всех расходов за месяц\n" \
+                   f"{self.format_text('Аналитика расходов 📊')} - показать распределение расходов по категориям\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+            if back_history == 'add_sum_outlay':
+                await self.edit_caption(call_back.message, text, self.build_keyboard(keyboard_outlay, 1))
+            else:
+                answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                                   self.build_keyboard(keyboard_outlay, 1), self.bot.logo_outlay_menu)
+                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_add_name_bank_outlay(self, call_back: CallbackQuery, back_history: str = None):
+        row_id = await self.execute.check_new_outlay(call_back.from_user.id)
+        data_time = self.dict_outlay[row_id]['data_time']
+        sum_outlay = int(self.dict_outlay[row_id]['sum_outlay'])
+        if back_history is None:
+            check_sum_outlay = await self.check_sum(call_back, sum_outlay,
+                                                    f"Сумма расходов не может быть равна {str(sum_outlay)} рублей")
+            if not check_sum_outlay:
+                sum_outlay = '0'
+                self.dict_outlay[row_id]['sum_outlay'] = float(sum_outlay)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_sum_outlay': 'Готово ✅'}
+                text_in_message = 'Введите сумму Ваших расходов 🛒'
+                text = f"{self.format_text(text_in_message)}\n " \
+                       f"Дата расходов: {self.format_text(data_time)}\n " \
+                       f"Сумма расходов: {self.format_text(str(sum_outlay))} ₽"
+                try:
+                    await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                     self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                     self.build_keyboard(keyboard_calculater, 3, button_done))
+                    await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+                except TelegramBadRequest:
+                    await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+            else:
+                name_bank = ""
+                keyboard_bank = await self.keyboard.get_bank()
+                button_done = {'done_add_bank_outlay': 'Готово ✅'}
+                text_in_message = 'Выберите наименование банка или другой способ проведения расходов 🏦'
+                text = f"{self.format_text(text_in_message)}\n " \
+                       f"Дата расходов: {self.format_text(data_time)}\n " \
+                       f"Сумма расходов: {self.format_text(str(sum_outlay))} ₽\n " \
+                       f"Способ осуществления расходов: {self.format_text(name_bank)}"
+                self.dict_outlay[row_id]['name_bank'] = name_bank
+                await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                 self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_bank, 4, button_done))
+                self.dict_user[call_back.from_user.id]['history'].append('add_name_bank_outlay')
+        else:
+            data_time = self.dict_outlay[row_id]['data_time']
+            sum_outlay = str(int(self.dict_outlay[row_id]['sum_outlay']))
+            keyboard_calculater = await self.keyboard.get_calculater()
+            button_done = {'done_sum_outlay': 'Готово ✅'}
+            text_in_message = 'Введите сумму Ваших расходов 🛒'
+            text = f"{self.format_text(text_in_message)}\n " \
+                   f"Дата расходов: {self.format_text(data_time)}\n " \
+                   f"Сумма расходов: {self.format_text(sum_outlay)} ₽"
+            if back_history == 'add_name_bank_outlay':
+                await self.edit_caption(call_back.message, text,
+                                        self.build_keyboard(keyboard_calculater, 3, button_done))
+            else:
+                answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                                   self.build_keyboard(keyboard_calculater, 3, button_done),
+                                                   self.bot.logo_outlay_menu)
+                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_add_new_income(self, call_back: CallbackQuery, back_history: str = None):
+        if back_history is None:
+            row_id = await self.execute.check_new_income(call_back.from_user.id)
+            if not row_id:
+                current_date = str(date.today())
+                data_in_message = f"{current_date.split('-')[2]}." \
+                                  f"{current_date.split('-')[1]}." \
+                                  f"{current_date.split('-')[0]} г."
+                row_id_default_category_in = await self.execute.get_row_id_category_income(call_back.from_user.id,
+                                                                                           'Прочие 📋')
+                default_value = {"data_time": data_in_message, "sum_income": 0, "name_bank": "",
+                                 "sender_funds": "", "category_in": row_id_default_category_in,
+                                 "status_income": "new"}
+                row_id = await self.execute.insert_income(call_back.from_user.id, default_value)
+                default_value['user_id'] = call_back.from_user.id
+                self.dict_income[row_id] = default_value
+            data_time = self.dict_income[row_id]['data_time']
+            amount = 0
+            keyboard_calculater = await self.keyboard.get_calculater()
+            button_done = {'done_sum_income': 'Готово ✅'}
+            text_in_message = 'Введите сумму Ваших доходов 🛒'
+            text = f"{self.format_text(text_in_message)}\n " \
+                   f"Дата доходов: {self.format_text(data_time)}\n " \
+                   f"Сумма доходов: {self.format_text(str(amount))} ₽"
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_calculater, 3, button_done))
+            self.dict_user[call_back.from_user.id]['history'].append('add_sum_income')
+        else:
+            keyboard_income = await self.keyboard.get_income_menu()
+            text = f"{self.format_text('Добавить новые доходы ➕')} - добавьте новые доходы\n" \
+                   f"{self.format_text('Показать список доходов 👀')} " \
+                   f"- вывести на экран список всех доходов за месяц\n" \
+                   f"{self.format_text('Аналитика доходов 📊')} - показать распределение доходов по категориям\n" \
+                   f"{self.format_text('Назад 🔙')} - вернуться в предыдущее меню\n"
+            if back_history == 'add_sum_income':
+                await self.edit_caption(call_back.message, text, self.build_keyboard(keyboard_income, 1))
+            else:
+                answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                                   self.build_keyboard(keyboard_income, 1), self.bot.logo_income_menu)
+                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_add_name_bank_income(self, call_back: CallbackQuery, back_history: str = None):
+        row_id = await self.execute.check_new_income(call_back.from_user.id)
+        data_time = self.dict_income[row_id]['data_time']
+        sum_income = int(self.dict_income[row_id]['sum_income'])
+        if back_history is None:
+            check_sum_income = await self.check_sum(call_back, sum_income,
+                                                    f"Сумма доходов не может быть равна {str(sum_income)} рублей")
+            if not check_sum_income:
+                sum_income = '0'
+                self.dict_income[row_id]['sum_income'] = float(sum_income)
+                keyboard_calculater = await self.keyboard.get_calculater()
+                button_done = {'done_sum_income': 'Готово ✅'}
+                text_in_message = 'Введите сумму Ваших доходов 🛒'
+                text = f"{self.format_text(text_in_message)}\n " \
+                       f"Дата доходов: {self.format_text(data_time)}\n " \
+                       f"Сумма доходов: {self.format_text(str(sum_income))} ₽"
+                try:
+                    await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                     self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                     self.build_keyboard(keyboard_calculater, 3, button_done))
+                    await self.execute.update_income(row_id, self.dict_income[row_id])
+                except TelegramBadRequest:
+                    await self.execute.update_income(row_id, self.dict_income[row_id])
+            else:
+                name_bank = ""
+                keyboard_bank = await self.keyboard.get_bank()
+                button_done = {'done_add_bank_income': 'Готово ✅'}
+                text_in_message = 'Выберите наименование банка или другой способ поступления доходов 🏦'
+                text = f"{self.format_text(text_in_message)}\n " \
+                       f"Дата доходов: {self.format_text(data_time)}\n " \
+                       f"Сумма доходов: {self.format_text(str(sum_income))} ₽\n " \
+                       f"Способ поступления доходов: {self.format_text(name_bank)}"
+                self.dict_income[row_id]['name_bank'] = name_bank
+                await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                                 self.dict_user[call_back.from_user.id]['messages'][-1],
+                                                 self.build_keyboard(keyboard_bank, 4, button_done))
+                self.dict_user[call_back.from_user.id]['history'].append('add_name_bank_income')
+        else:
+            data_time = self.dict_income[row_id]['data_time']
+            sum_income = str(int(self.dict_income[row_id]['sum_income']))
+            keyboard_calculater = await self.keyboard.get_calculater()
+            button_done = {'done_sum_income': 'Готово ✅'}
+            text_in_message = 'Введите сумму Ваших доходов 🛒'
+            text = f"{self.format_text(text_in_message)}\n " \
+                   f"Дата доходов: {self.format_text(data_time)}\n " \
+                   f"Сумма доходов: {self.format_text(sum_income)} ₽"
+            if back_history == 'add_name_bank_income':
+                await self.edit_caption(call_back.message, text,
+                                        self.build_keyboard(keyboard_calculater, 3, button_done))
+            else:
+                answer = await self.bot.push_photo(call_back.message.chat.id, text,
+                                                   self.build_keyboard(keyboard_calculater, 3, button_done),
+                                                   self.bot.logo_income_menu)
+                self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                    call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_bank(self, call_back: CallbackQuery):
+        if self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_bank_outlay':
+            await self.show_bank_outlay(call_back)
+        elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_name_bank_income':
+            await self.show_bank_income(call_back)
+        else:
+            print(f"Клавиатура банков не там, где нужно: {self.dict_user[call_back.from_user.id]['history'][-1]}")
+        return True
+
+    async def show_bank_outlay(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_outlay(call_back.from_user.id)
+        data_time = self.dict_outlay[row_id]['data_time']
+        sum_outlay = int(self.dict_outlay[row_id]['sum_outlay'])
+        name_bank = call_back.data
+        self.dict_outlay[row_id]['name_bank'] = name_bank
+        keyboard_bank = await self.keyboard.get_bank()
+        button_done = {'done_add_bank_outlay': 'Готово ✅'}
+        text_in_message = 'Выберите наименование банка или другой способ проведения расходов 🏦'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата расходов: {self.format_text(data_time)}\n " \
+               f"Сумма расходов: {self.format_text(str(sum_outlay))} ₽\n " \
+               f"Способ осуществления расходов: {self.format_text(name_bank)}"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_bank, 4, button_done))
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+            return True
+        except TelegramBadRequest:
+            await self.execute.update_outlay(row_id, self.dict_outlay[row_id])
+            return True
+
+    async def show_bank_income(self, call_back: CallbackQuery):
+        row_id = await self.execute.check_new_income(call_back.from_user.id)
+        data_time = self.dict_income[row_id]['data_time']
+        sum_income = int(self.dict_income[row_id]['sum_income'])
+        name_bank = call_back.data
+        self.dict_income[row_id]['name_bank'] = name_bank
+        keyboard_bank = await self.keyboard.get_bank()
+        button_done = {'done_add_bank_income': 'Готово ✅'}
+        text_in_message = 'Выберите наименование банка или другой способ поступления доходов 🏦'
+        text = f"{self.format_text(text_in_message)}\n " \
+               f"Дата доходов: {self.format_text(data_time)}\n " \
+               f"Сумма доходов: {self.format_text(str(sum_income))} ₽\n " \
+               f"Способ осуществления доходов: {self.format_text(name_bank)}"
+        try:
+            await self.bot.edit_head_caption(text, call_back.message.chat.id,
+                                             self.dict_user[call_back.from_user.id]['messages'][-1],
+                                             self.build_keyboard(keyboard_bank, 4, button_done))
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+            return True
+        except TelegramBadRequest:
+            await self.execute.update_income(row_id, self.dict_income[row_id])
+            return True
 
     async def get_document(self, message: Message, list_messages: list):
         document_info = await self.bot.save_document(message)

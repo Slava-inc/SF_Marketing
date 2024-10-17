@@ -1,8 +1,9 @@
-# import asyncio
+import asyncio
 import json
 import logging
 import aiosqlite
 import os
+from operator import itemgetter
 from dotenv import load_dotenv
 from prettytable import PrettyTable
 from exception import send_message
@@ -45,6 +46,18 @@ class Execute:
             await cursor.execute(f"DROP TABLE {name_table}")
             await self.conn.commit()
 
+    async def add_column(self, name_table: str, name_column: str, type_column: str):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_add_column(name_table, name_column, type_column)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе add_column', os.environ["EMAIL"], str(e))
+
+    async def execute_add_column(self, name_table: str, name_column: str, type_column: str):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            await cursor.execute(f"ALTER TABLE {name_table} ADD COLUMN {name_column} {type_column}")
+            await self.conn.commit()
+
     async def show_columns(self, name_table: str):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
@@ -79,32 +92,6 @@ class Execute:
                 dict_user[item[0]] = {'history': list_history, 'messages': list_messages, 'first_name': item[3],
                                       'last_name': item[4], 'user_name': item[5]}
             return dict_user
-
-    async def set_user(self, id: int, dict_info: dict):
-        try:
-            async with aiosqlite.connect(self.connect_string) as self.conn:
-                await self.execute_set_user(id, dict_info)
-        except Exception as e:
-            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
-            print(str(e))
-
-    async def execute_set_user(self, id: int, dict_info: dict):
-        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
-            try:
-                sql_record = f"INSERT INTO USERS " \
-                            f"(ID, USER_ID, HISTORY, MESSAGES, FIRST_NAME, LAST_NAME, USER_NAME) " \
-                            f"VALUES({id}, " \
-                            f"'{dict_info['user_id']}', " \
-                            f"'{dict_info['history']}', " \
-                            f"'{dict_info['messages']}', " \
-                            f"'{dict_info['first_name']}', " \
-                            f"'{dict_info['last_name']}', " \
-                            f"'{dict_info['user_name']}') "
-
-                await cursor.execute(sql_record)
-            except Exception as e:
-                print(str(e))
-            await self.conn.commit() 
                                 
     async def get_user(self, id_user: int) -> dict:
         try:
@@ -239,6 +226,88 @@ class Execute:
                                       'data_finish': item[9], 'status_goal': item[10]}
             return dict_goal
 
+    @property
+    async def get_dict_outlay(self) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_dict_outlay()
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_dict_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_get_dict_outlay(self) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_list_outlay = f"SELECT ROWID, USER_ID, DATA_TIME, SUM, NAME_BANK, RECIPIENT_FUNDS, CATEGORY_OUT, " \
+                              f"STATUS_OUTLAY " \
+                              f"FROM OUTLAY "
+            await cursor.execute(sql_list_outlay)
+            row_table = await cursor.fetchall()
+            dict_outlay = {}
+            for item in row_table:
+                dict_outlay[item[0]] = {'user_id': item[1], 'data_time': item[2], 'sum_outlay': item[3],
+                                        'name_bank': item[4], 'recipient_funds': item[5], 'category_out': item[6],
+                                        'status_outlay': item[7]}
+            return dict_outlay
+
+    @property
+    async def get_dict_income(self) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_dict_income()
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_dict_income', os.environ["EMAIL"], str(e))
+
+    async def execute_get_dict_income(self) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_list_income = f"SELECT ROWID, USER_ID, DATA_TIME, SUM, NAME_BANK, SENDER_FUNDS, CATEGORY_IN, " \
+                              f"STATUS_INCOME " \
+                              f"FROM INCOME "
+            await cursor.execute(sql_list_income)
+            row_table = await cursor.fetchall()
+            dict_income = {}
+            for item in row_table:
+                dict_income[item[0]] = {'user_id': item[1], 'data_time': item[2], 'sum_income': item[3],
+                                        'name_bank': item[4], 'sender_funds': item[5], 'category_in': item[6],
+                                        'status_income': item[7]}
+            return dict_income
+
+    async def get_dict_category_outlay(self, user_id: int) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_dict_category_outlay(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_dict_category_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_get_dict_category_outlay(self, user_id: int) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_list_category_outlay = f"SELECT ROWID, NAME " \
+                                       f"FROM CATEGORY_OUTLAY " \
+                                       f"WHERE USER_ID = '{user_id}'"
+            await cursor.execute(sql_list_category_outlay)
+            row_table = await cursor.fetchall()
+            dict_category_outlay = {}
+            for item in row_table:
+                dict_category_outlay[item[0]] = item[1]
+            return dict_category_outlay
+
+    async def get_dict_category_income(self, user_id: int) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_dict_category_income(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_dict_category_income', os.environ["EMAIL"], str(e))
+
+    async def execute_get_dict_category_income(self, user_id: int) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_list_category_income = f"SELECT ROWID, NAME " \
+                                       f"FROM CATEGORY_INCOME " \
+                                       f"WHERE USER_ID = '{user_id}'"
+            await cursor.execute(sql_list_category_income)
+            row_table = await cursor.fetchall()
+            dict_category_income = {}
+            for item in row_table:
+                dict_category_income[item[0]] = item[1]
+            return dict_category_income
+
     async def check_new_goal(self, user_id: int) -> int:
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
@@ -252,6 +321,46 @@ class Execute:
                                  f"FROM GOAL " \
                                  f"WHERE USER_ID = '{user_id}' AND STATUS_GOAL = 'new' "
             await cursor.execute(sql_check_new_goal)
+            row_table = await cursor.fetchone()
+            if row_table is None:
+                row_id = 0
+            else:
+                row_id = row_table[0]
+            return row_id
+
+    async def check_new_outlay(self, user_id: int) -> int:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_check_new_outlay(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе check_new_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_check_new_outlay(self, user_id: int) -> int:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_check_new_outlay = f"SELECT ROWID " \
+                                   f"FROM OUTLAY " \
+                                   f"WHERE USER_ID = '{user_id}' AND STATUS_OUTLAY = 'new' "
+            await cursor.execute(sql_check_new_outlay)
+            row_table = await cursor.fetchone()
+            if row_table is None:
+                row_id = 0
+            else:
+                row_id = row_table[0]
+            return row_id
+
+    async def check_new_income(self, user_id: int) -> int:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_check_new_income(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе check_new_income', os.environ["EMAIL"], str(e))
+
+    async def execute_check_new_income(self, user_id: int) -> int:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_check_new_income = f"SELECT ROWID " \
+                                   f"FROM INCOME " \
+                                   f"WHERE USER_ID = '{user_id}' AND STATUS_INCOME = 'new' "
+            await cursor.execute(sql_check_new_income)
             row_table = await cursor.fetchone()
             if row_table is None:
                 row_id = 0
@@ -284,6 +393,23 @@ class Execute:
                                       'data_finish': item[9], 'status_goal': item[10]}
             return dict_goal
 
+    async def get_pages_goals(self, user_id: int) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_pages_goals(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_pages_goals', os.environ["EMAIL"], str(e))
+
+    async def execute_get_pages_goals(self, user_id: int) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_list_goal = f"SELECT ROWID, USER_ID, GOAL_NAME, SUM_GOAL, INCOME_USER, INCOME_FREQUENCY, DURATION, " \
+                            f"REMINDER_DAYS, REMINDER_TIME, DATA_FINISH, STATUS_GOAL " \
+                            f"FROM GOAL " \
+                            f"WHERE STATUS_GOAL = 'current' AND USER_ID = {user_id}"
+            await cursor.execute(sql_list_goal)
+            row_table = await cursor.fetchall()
+            return self.assembling_goals(row_table)
+
     async def insert_goal(self, user_id: int, dict_info_goal: dict) -> int:
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
@@ -303,6 +429,44 @@ class Execute:
                               f"'{dict_info_goal['reminder_time']}', '{dict_info_goal['data_finish']}', " \
                               f"'{dict_info_goal['status_goal']}') "
             await cursor.execute(sql_insert_goal)
+            await self.conn.commit()
+            return cursor.lastrowid
+
+    async def insert_outlay(self, user_id: int, dict_info_outlay: dict) -> int:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_insert_outlay(user_id, dict_info_outlay)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе insert_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_insert_outlay(self, user_id: int, dict_info_outlay: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_insert_outlay = f"INSERT INTO OUTLAY " \
+                                f"(USER_ID, DATA_TIME, SUM, NAME_BANK, RECIPIENT_FUNDS, CATEGORY_OUT, STATUS_OUTLAY) " \
+                                f"VALUES('{user_id}', '{dict_info_outlay['data_time']}', " \
+                                f"'{dict_info_outlay['sum_outlay']}', '{dict_info_outlay['name_bank']}', " \
+                                f"'{dict_info_outlay['recipient_funds']}', '{dict_info_outlay['category_out']}', " \
+                                f"'{dict_info_outlay['status_outlay']}') "
+            await cursor.execute(sql_insert_outlay)
+            await self.conn.commit()
+            return cursor.lastrowid
+
+    async def insert_income(self, user_id: int, dict_info_income: dict) -> int:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_insert_income(user_id, dict_info_income)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе insert_income', os.environ["EMAIL"], str(e))
+
+    async def execute_insert_income(self, user_id: int, dict_info_income: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_insert_income = f"INSERT INTO INCOME " \
+                                f"(USER_ID, DATA_TIME, SUM, NAME_BANK, SENDER_FUNDS, CATEGORY_IN, STATUS_INCOME) " \
+                                f"VALUES('{user_id}', '{dict_info_income['data_time']}', " \
+                                f"'{dict_info_income['sum_income']}', '{dict_info_income['name_bank']}', " \
+                                f"'{dict_info_income['sender_funds']}', '{dict_info_income['category_in']}', " \
+                                f"'{dict_info_income['status_income']}') "
+            await cursor.execute(sql_insert_income)
             await self.conn.commit()
             return cursor.lastrowid
 
@@ -329,6 +493,48 @@ class Execute:
                               f"STATUS_GOAL = '{dict_info_goal['status_goal']}' " \
                               f"WHERE ROWID = '{row_id}' "
             await cursor.execute(sql_update_goal)
+            await self.conn.commit()
+
+    async def update_outlay(self, row_id: int, dict_info_outlay: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_update_outlay(row_id, dict_info_outlay)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе update_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_update_outlay(self, row_id: int, dict_info_outlay: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_update_outlay = f"UPDATE OUTLAY SET " \
+                                f"USER_ID = '{dict_info_outlay['user_id']}', " \
+                                f"DATA_TIME = '{dict_info_outlay['data_time']}', " \
+                                f"SUM = '{dict_info_outlay['sum_outlay']}', " \
+                                f"NAME_BANK = '{dict_info_outlay['name_bank']}', " \
+                                f"RECIPIENT_FUNDS = '{dict_info_outlay['recipient_funds']}', " \
+                                f"CATEGORY_OUT = '{dict_info_outlay['category_out']}', " \
+                                f"STATUS_OUTLAY = '{dict_info_outlay['status_outlay']}' " \
+                                f"WHERE ROWID = '{row_id}' "
+            await cursor.execute(sql_update_outlay)
+            await self.conn.commit()
+
+    async def update_income(self, row_id: int, dict_info_income: dict):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_update_income(row_id, dict_info_income)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе update_income', os.environ["EMAIL"], str(e))
+
+    async def execute_update_income(self, row_id: int, dict_info_income: dict):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_update_income = f"UPDATE INCOME SET " \
+                                f"USER_ID = '{dict_info_income['user_id']}', " \
+                                f"DATA_TIME = '{dict_info_income['data_time']}', " \
+                                f"SUM = '{dict_info_income['sum_income']}', " \
+                                f"NAME_BANK = '{dict_info_income['name_bank']}', " \
+                                f"SENDER_FUNDS = '{dict_info_income['sender_funds']}', " \
+                                f"CATEGORY_IN = '{dict_info_income['category_in']}', " \
+                                f"STATUS_INCOME = '{dict_info_income['status_income']}' " \
+                                f"WHERE ROWID = '{row_id}' "
+            await cursor.execute(sql_update_income)
             await self.conn.commit()
 
     async def delete_goal(self, row_id: int):
@@ -370,63 +576,213 @@ class Execute:
                 print(my_table)
                 print(f"В базе {len(row_table)} целей")
 
-    async def set_category_income(self, id: int, dict_info: dict):
+    async def show_outlay(self):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
-                await self.execute_set_category_income(id, dict_info)
+                await self.execute_show_outlay()
         except Exception as e:
-            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
-            print(str(e))
+            await send_message('Ошибка запроса в методе show_outlay', os.environ["EMAIL"], str(e))
 
-    async def execute_set_category_income(self, id: int, dict_info: dict):
+    async def execute_show_outlay(self):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_show_outlay = f"SELECT ROWID, USER_ID, DATA_TIME, SUM, NAME_BANK, RECIPIENT_FUNDS, CATEGORY_OUT, " \
+                              f"STATUS_OUTLAY " \
+                              f"FROM OUTLAY "
+            await cursor.execute(sql_show_outlay)
+            row_table = await cursor.fetchall()
+            if not row_table:
+                print(f"В базе нет расходов")
+            else:
+                my_table = PrettyTable()
+                my_table.field_names = ["ROWID", "USER_ID", "DATA_TIME", "SUM", "NAME_BANK", "RECIPIENT_FUNDS",
+                                        "CATEGORY_OUT", "STATUS_OUTLAY"]
+                for item in row_table:
+                    my_table.add_row([item[0], item[1], item[2], item[3], item[4], item[5], item[6],
+                                      item[7]])
+                print(my_table)
+                print(f"В базе {len(row_table)} расходов")
 
-            sql_record = f"INSERT INTO CATEGORY_INCOME " \
-                         f"(ID, USER_ID, NAME) " \
-                         f"VALUES({id}, " \
-                         f"{dict_info['user_id']}, " \
-                         f"'{dict_info['name']}') " 
-            await cursor.execute(sql_record)
+    async def show_income(self):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_show_income()
+        except Exception as e:
+            await send_message('Ошибка запроса в методе show_income', os.environ["EMAIL"], str(e))
+
+    async def execute_show_income(self):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_show_income = f"SELECT ROWID, USER_ID, DATA_TIME, SUM, NAME_BANK, SENDER_FUNDS, CATEGORY_IN, " \
+                              f"STATUS_INCOME " \
+                              f"FROM INCOME "
+            await cursor.execute(sql_show_income)
+            row_table = await cursor.fetchall()
+            if not row_table:
+                print(f"В базе нет доходов")
+            else:
+                my_table = PrettyTable()
+                my_table.field_names = ["ROWID", "USER_ID", "DATA_TIME", "SUM", "NAME_BANK", "SENDER_FUNDS",
+                                        "CATEGORY_IN", "STATUS_INCOME"]
+                for item in row_table:
+                    my_table.add_row([item[0], item[1], item[2], item[3], item[4], item[5], item[6],
+                                      item[7]])
+                print(my_table)
+                print(f"В базе {len(row_table)} доходов")
+
+    async def show_category(self, name_table: str):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_show_category(name_table)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе show_category', os.environ["EMAIL"], str(e))
+
+    async def execute_show_category(self, name_table: str):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_show_category = f"SELECT ROWID, USER_ID, NAME FROM {name_table} "
+            await cursor.execute(sql_show_category)
+            row_table = await cursor.fetchall()
+            if not row_table:
+                print(f"В базе нет категорий")
+            else:
+                my_table = PrettyTable()
+                my_table.field_names = ["ROWID", "USER_ID", "NAME"]
+                for item in row_table:
+                    my_table.add_row([item[0], item[1], item[2]])
+                print(my_table)
+                print(f"В базе {len(row_table)} категорий")
+
+    async def get_category_keyboard(self, user_id: int, name_table: str) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_category_keyboard(user_id, name_table)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_category_keyboard', os.environ["EMAIL"], str(e))
+
+    async def execute_get_category_keyboard(self, user_id: int, name_table: str) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_get_category = f"SELECT ROWID, NAME FROM '{name_table}' WHERE USER_ID = '{user_id}' "
+            await cursor.execute(sql_get_category)
+            row_table = await cursor.fetchall()
+            dict_category = {}
+            for item in row_table:
+                dict_category[item[0]] = item[1]
+            return dict_category
+
+    async def set_default_category(self, user_id: int):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_default_category(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе set_default_category_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_set_default_category(self, user_id: int):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            default_category = ['Автомобиль 🏎️', 'Бизнес  👨‍💼', 'Подарки 🎁', 'Бытовая техника 📻', 'Дети 👶',
+                                'Домашние животные🐱🐕', 'Здоровье и красота 💊', 'Ипотека, долги, кредиты 💳',
+                                'Коммунальные платежи 🏠', 'Налоги и страхование 📒', 'Образование 🧑‍🎓',
+                                'Одежда и аксессуары 👒👗', 'Отдых и развлечение 🏖️', 'Питание 🍴🥄',
+                                'Ремонт и мебель 🛏🛁', 'Товары для дома 🧼🧹', 'Транспорт 🚌🚇',  'Хобби 🎩',
+                                'Связь и интернет 🌏', 'Прочие 📋']
+            for category_name in default_category:
+                sql_category = f"INSERT INTO CATEGORY_OUTLAY " \
+                               f"(USER_ID, NAME) " \
+                               f"VALUES('{user_id}', '{category_name}') "
+                await cursor.execute(sql_category)
+            default_category = ['Аванс 💵', 'Алименты  👨‍💼', 'Возврат налогов 🧾', 'Грант 🏦', 'Дивиденды 📈',
+                                'Доход от бизнеса 💹', 'Зарплата 💰', 'Пенсия 👴',
+                                'Подарки 🎁', 'Помощь 🆘', 'Премия 🤑',
+                                'Приз (выигрыш) 🕊️', 'Приработок 👨‍💻', 'Проценты по депозиту 🏧',
+                                'Социальное пособие 💳', 'Стипендия 🧑‍🎓', 'Прочие 📋']
+            for category_name in default_category:
+                sql_category = f"INSERT INTO CATEGORY_INCOME " \
+                               f"(USER_ID, NAME) " \
+                               f"VALUES('{user_id}', '{category_name}') "
+                await cursor.execute(sql_category)
+            await self.conn.commit()
+
+    async def delete_category(self, user_id: int):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_delete_category(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе delete_category', os.environ["EMAIL"], str(e))
+
+    async def execute_delete_category(self, user_id: int):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_delete = f"DELETE FROM CATEGORY_OUTLAY WHERE USER_ID = {self.quote(user_id)} "
+            await cursor.execute(sql_delete)
+            sql_delete = f"DELETE FROM CATEGORY_INCOME WHERE USER_ID = {self.quote(user_id)} "
+            await cursor.execute(sql_delete)
+            await self.conn.commit()
+
+    async def set_category_income(self, user_id: int, category_name: str):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_set_category_income(user_id, category_name)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе set_category_income', os.environ["EMAIL"], str(e))
+
+    async def execute_set_category_income(self, user_id: int, category_name: str):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_category = f"INSERT INTO CATEGORY_INCOME " \
+                           f"(USER_ID, NAME) " \
+                           f"VALUES('{user_id}', '{category_name}') "
+            await cursor.execute(sql_category)
             await self.conn.commit() 
 
-    async def set_category_outlay(self, id: int, dict_info: dict):
+    async def set_category_outlay(self, user_id: int, category_name: str):
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
-                await self.execute_set_category_outlay(id, dict_info)
+                await self.execute_set_category_outlay(user_id, category_name)
         except Exception as e:
-            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
-            print(str(e))
+            await send_message('Ошибка запроса в методе set_category_outlay', os.environ["EMAIL"], str(e))
 
-    async def execute_set_category_outlay(self, id: int, dict_info: dict):
+    async def execute_set_category_outlay(self, user_id: int, category_name: str):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
-
-            sql_record = f"INSERT INTO CATEGORY_OUTLAY " \
-                         f"(ID, USER_ID, GOAL_ID, NAME) " \
-                         f"VALUES({id}, " \
-                         f"{dict_info['user_id']}, " \
-                         f"{dict_info['goal_id']}, " \
-                         f"'{dict_info['name']}') " 
-            await cursor.execute(sql_record)
+            sql_category = f"INSERT INTO CATEGORY_OUTLAY " \
+                           f"(USER_ID, NAME) " \
+                           f"VALUES('{user_id}', '{category_name}') "
+            await cursor.execute(sql_category)
             await self.conn.commit()   
 
-    async def get_row_id (self, table_name: str):
+    async def get_row_id_category_outlay(self, user_id: int, category_name: str) -> int:
         try:
             async with aiosqlite.connect(self.connect_string) as self.conn:
-                return await self.execute_get_row_id(table_name)
+                return await self.execute_get_row_id_category_outlay(user_id, category_name)
         except Exception as e:
-            # await send_message('Ошибка запроса в методе set_user', os.environ["EMAIL"], str(e))
-            print(str(e))
+            await send_message('Ошибка запроса в методе get_row_id_category_outlay', os.environ["EMAIL"], str(e))
 
-    async def execute_get_row_id(self, table_name):
+    async def execute_get_row_id_category_outlay(self, user_id: int, category_name: str) -> int:
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
-            sql_row_max = f"SELECT MAX(id) FROM {table_name}"
+            sql_get_row_id_category_outlay = f"SELECT ROWID " \
+                                             f"FROM CATEGORY_OUTLAY " \
+                                             f"WHERE USER_ID = '{user_id}' AND NAME = '{category_name}'"
+            await cursor.execute(sql_get_row_id_category_outlay)
+            row_table = await cursor.fetchone()
+            if row_table is None:
+                row_id = 0
+            else:
+                row_id = row_table[0]
+            return row_id
 
-            try:
-                await cursor.execute(sql_row_max)
-                max_id = await cursor.fetchone()
-                return max_id[0] + 1
-            except Exception as e:
-                print(str(e))
+    async def get_row_id_category_income(self, user_id: int, category_name: str) -> int:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_row_id_category_income(user_id, category_name)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_row_id_category_income', os.environ["EMAIL"], str(e))
+
+    async def execute_get_row_id_category_income(self, user_id: int, category_name: str) -> int:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_get_row_id_category_income = f"SELECT ROWID " \
+                                             f"FROM CATEGORY_INCOME " \
+                                             f"WHERE USER_ID = '{user_id}' AND NAME = '{category_name}' "
+            await cursor.execute(sql_get_row_id_category_income)
+            row_table = await cursor.fetchone()
+            if row_table is None:
+                row_id = 0
+            else:
+                row_id = row_table[0]
+            return row_id
             
     @staticmethod
     def quote(request) -> str:
@@ -450,33 +806,67 @@ class Execute:
         dict_reminder_days = json.dumps(dict_item)
         return dict_reminder_days
 
+    @staticmethod
+    def assembling_goals(arr: list) -> dict:
+        assembling_dict_goals = {}
+        dict_goal = {}
+        i = 1
+        y = 1
+        for item_goal in sorted(arr, key=itemgetter(3), reverse=True):
+            if i < 7:
+                dict_goal[item_goal[0]] = [item_goal[1], item_goal[2], item_goal[3],
+                                           item_goal[4], item_goal[5], item_goal[6],
+                                           item_goal[7], item_goal[8], item_goal[9],
+                                           item_goal[10]]
+                i += 1
+
+            else:
+                assembling_dict_goals['Цели Стр.' + str(y)] = dict_goal
+                i = 1
+                dict_goal = {}
+                y += 1
+                dict_goal[item_goal[0]] = [item_goal[1], item_goal[2], item_goal[3],
+                                           item_goal[4], item_goal[5], item_goal[6],
+                                           item_goal[7], item_goal[8], item_goal[9],
+                                           item_goal[10]]
+                i += 1
+        assembling_dict_goals['Цели Стр.' + str(y)] = dict_goal
+        return assembling_dict_goals
+
 
 # base = Execute()
-# asyncio.run(base.delete_table(f"GOAL"))
+# asyncio.run(base.delete_table(f"CATEGORY_INCOME"))
 # str_reminder_days = json.dumps({'MON': 0, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 0, 'SUN': 0})
-# asyncio.run(base.create_table(f"CREATE TABLE IF NOT EXISTS GOAL ("
+# asyncio.run(base.create_table(f"CREATE TABLE IF NOT EXISTS INCOME ("
 #                               f"USER_ID INTEGER NOT NULL, "
-#                               f"GOAL_NAME TEXT, "
-#                               f"SUM_GOAL REAL, "
-#                               f"INCOME_USER REAL, "
-#                               f"INCOME_FREQUENCY INTEGER, "
-#                               f"DURATION INTEGER, "
-#                               f"REMINDER_DAYS TEXT , "
-#                               f"REMINDER_TIME TEXT, "
-#                               f"DATA_FINISH TEXT, "
-#                               f"STATUS_GOAL TEXT, "
-#                               f"FOREIGN KEY (USER_ID) REFERENCES USERS (ID))"))
+#                               f"DATA_TIME TEXT, "
+#                               f"SUM REAL, "
+#                               f"NAME_BANK TEXT, "
+#                               f"SENDER_FUNDS TEXT, "
+#                               f"CATEGORY_IN INTEGER, "
+#                               f"STATUS_INCOME TEXT , "
+#                               f"FOREIGN KEY (USER_ID) REFERENCES USERS (ID),"
+# #                               f"FOREIGN KEY (CATEGORY_IN) REFERENCES CATEGORY_INCOME (ID))"))
 # asyncio.run(base.create_table(f"CREATE TABLE IF NOT EXISTS CATEGORY_INCOME ("
-#                               f"ID INTEGER PRIMARY KEY, "
 #                               f"USER_ID INTEGER NOT NULL, "
-#                               f"NAME TEXT)"))
-# asyncio.run(base.show_columns('GOAL'))
+#                               f"NAME TEXT,"
+#                               f"FOREIGN KEY (USER_ID) REFERENCES USERS (ID))"))
+# asyncio.run(base.add_column('OUTLAY', 'STATUS_OUTLAY', 'TEXT'))
+# asyncio.run(base.show_columns('OUTLAY'))
 # asyncio.run(base.update_goal(2, {'user_id': '1660842495', 'goal_name': 'Машина', 'sum_goal': 6000.00,
 #                                  'income_user': 2000.00, 'income_frequency': 2, 'duration': 60,
 #                                  'reminder_days': {'MON': 1, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 1,
 #                                                    'SUN': 1},
 #                                  'reminder_time': '14:00', 'data_finish': '2025-01-30', 'status_goal': 'current'}))
-# asyncio.run(base.delete_user(1660842495))
+# asyncio.run(base.delete_user(2072557270))
+# asyncio.run(base.delete_category(2072557270))
 # # asyncio.run(base.delete_goal(7))
 # asyncio.run(base.show_users())
-# asyncio.run(base.show_goals())
+# asyncio.run(base.show_outlay())
+# asyncio.run(base.set_default_category_outlay(2072557270))
+# asyncio.run(base.show_category('CATEGORY_OUTLAY'))
+# category = asyncio.run(base.get_category_keyboard(1660842495, 'CATEGORY_INCOME'))
+# for row_category, name_category in category.items():
+#     print(f"{row_category} {name_category}")
+# print(category)
+# asyncio.run(base.show_income())
