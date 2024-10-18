@@ -4,6 +4,8 @@
 
 Запись встречи 17.10.2924: https://disk.yandex.ru/i/jxD8gd4JY0J9Ag
 
+Презентация >>> https://disk.yandex.ru/i/LR8_75s6J-5Ozg <<<
+
 Визуал бота: https://disk.yandex.ru/d/jM6SSDF-uqSTqw
 import asyncio
 import os
