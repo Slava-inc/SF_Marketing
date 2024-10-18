@@ -13,6 +13,12 @@ from pdf2image import convert_from_path
 import pytesseract
 # Для удаления дополнительно созданных файлов
 import os
+from dotenv import load_dotenv
+
+dotenv_path = os.path.join(os.path.dirname(__file__), 'env')
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
+
 # Добавляем пути к исполняемым файлам tesseract.exe в переменные окружения
 
 if sys.platform == 'win32':

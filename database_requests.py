@@ -95,9 +95,8 @@ class Execute:
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
             try:
                 sql_record = f"INSERT INTO USERS " \
-                            f"(ID, USER_ID, HISTORY, MESSAGES, FIRST_NAME, LAST_NAME, USER_NAME) " \
+                            f"(ID, HISTORY, MESSAGES, FIRST_NAME, LAST_NAME, USER_NAME) " \
                             f"VALUES({id}, " \
-                            f"'{dict_info['user_id']}', " \
                             f"'{dict_info['history']}', " \
                             f"'{dict_info['messages']}', " \
                             f"'{dict_info['first_name']}', " \

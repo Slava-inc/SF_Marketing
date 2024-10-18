@@ -4,7 +4,6 @@ import os
 
 TABLES = [f"CREATE TABLE IF NOT EXISTS USERS ("
                                   f"ID INTEGER PRIMARY KEY, "
-                                  f"USER_ID INTEGER NOT NULL, "
                                   f"HISTORY text, "                                  
                                   f"MESSAGES  TEXT, "
                                   f"FIRST_NAME   TEXT, "
@@ -56,7 +55,7 @@ TABLES = [f"CREATE TABLE IF NOT EXISTS USERS ("
                                   f"FOREIGN KEY (CATEGORY_IN) REFERENCES CATEGORY_INCOME (ID) )",]
 
 if __name__ == "__main__":
-    base = Execute(os.path.join(os.path.split(os.path.dirname(__file__))[0], "SF_marketing/tests/db.sqlite")
+    base = Execute(os.path.join(os.path.split(os.path.dirname(__file__))[0], "SF_marketing/db.sqlite")
 )
     asyncio.run(base.create_data_base())
 
