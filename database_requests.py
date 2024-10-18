@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import aiosqlite
@@ -405,10 +404,44 @@ class Execute:
             sql_list_goal = f"SELECT ROWID, USER_ID, GOAL_NAME, SUM_GOAL, INCOME_USER, INCOME_FREQUENCY, DURATION, " \
                             f"REMINDER_DAYS, REMINDER_TIME, DATA_FINISH, STATUS_GOAL " \
                             f"FROM GOAL " \
-                            f"WHERE STATUS_GOAL = 'current' AND USER_ID = {user_id}"
+                            f"WHERE STATUS_GOAL = 'current' AND USER_ID = '{user_id}'"
             await cursor.execute(sql_list_goal)
             row_table = await cursor.fetchall()
             return self.assembling_goals(row_table)
+
+    async def get_pages_outlay(self, user_id: int) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_pages_outlay(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_pages_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_get_pages_outlay(self, user_id: int) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_list_outlay = f"SELECT ROWID, USER_ID, DATA_TIME, SUM, NAME_BANK, RECIPIENT_FUNDS, CATEGORY_OUT, " \
+                              f"STATUS_OUTLAY " \
+                              f"FROM OUTLAY " \
+                              f"WHERE STATUS_OUTLAY = 'current' AND USER_ID = '{user_id}'"
+            await cursor.execute(sql_list_outlay)
+            row_table = await cursor.fetchall()
+            return self.assembling_outlay(row_table)
+
+    async def get_pages_income(self, user_id: int) -> dict:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_pages_income(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_pages_income', os.environ["EMAIL"], str(e))
+
+    async def execute_get_pages_income(self, user_id: int) -> dict:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_list_income = f"SELECT ROWID, USER_ID, DATA_TIME, SUM, NAME_BANK, SENDER_FUNDS, CATEGORY_IN, " \
+                              f"STATUS_INCOME " \
+                              f"FROM INCOME " \
+                              f"WHERE STATUS_INCOME = 'current' AND USER_ID = '{user_id}'"
+            await cursor.execute(sql_list_income)
+            row_table = await cursor.fetchall()
+            return self.assembling_income(row_table)
 
     async def insert_goal(self, user_id: int, dict_info_goal: dict) -> int:
         try:
@@ -547,6 +580,32 @@ class Execute:
     async def execute_delete_goal(self, row_id: int):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
             sql_delete = f"DELETE FROM GOAL WHERE ROWID = {self.quote(row_id)} "
+            await cursor.execute(sql_delete)
+            await self.conn.commit()
+
+    async def delete_outlay(self, row_id: int):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_delete_outlay(row_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе delete_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_delete_outlay(self, row_id: int):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_delete = f"DELETE FROM OUTLAY WHERE ROWID = {self.quote(row_id)} "
+            await cursor.execute(sql_delete)
+            await self.conn.commit()
+
+    async def delete_income(self, row_id: int):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                await self.execute_delete_income(row_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе delete_income', os.environ["EMAIL"], str(e))
+
+    async def execute_delete_income(self, row_id: int):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_delete = f"DELETE FROM INCOME WHERE ROWID = {self.quote(row_id)} "
             await cursor.execute(sql_delete)
             await self.conn.commit()
 
@@ -826,6 +885,56 @@ class Execute:
             else:
                 row_id = row_table[0]
             return row_id
+
+    async def get_data_diagram_outlay(self, user_id: int):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_data_diagram_outlay(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_data_diagram_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_get_data_diagram_outlay(self, user_id: int):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_get_data_diagram_outlay = f"SELECT CATEGORY_OUTLAY.NAME, sum(OUTLAY.SUM) " \
+                                          f"FROM OUTLAY " \
+                                          f"INNER JOIN CATEGORY_OUTLAY " \
+                                          f"ON OUTLAY.CATEGORY_OUT = CATEGORY_OUTLAY.ROWID " \
+                                          f"AND OUTLAY.USER_ID = '{user_id}' " \
+                                          f"GROUP BY CATEGORY_OUT"
+            await cursor.execute(sql_get_data_diagram_outlay)
+            row_table = await cursor.fetchall()
+            list_name = []
+            list_value = []
+            if row_table:
+                for item in row_table:
+                    list_name.append(item[0])
+                    list_value.append(item[1])
+            return list_name, list_value
+
+    async def get_data_diagram_income(self, user_id: int):
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_data_diagram_income(user_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_data_diagram_income', os.environ["EMAIL"], str(e))
+
+    async def execute_get_data_diagram_income(self, user_id: int):
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_get_data_diagram_income = f"SELECT CATEGORY_INCOME.NAME, sum(INCOME.SUM) " \
+                                          f"FROM INCOME " \
+                                          f"INNER JOIN CATEGORY_INCOME " \
+                                          f"ON INCOME.CATEGORY_IN = CATEGORY_INCOME.ROWID " \
+                                          f"AND INCOME.USER_ID = '{user_id}' " \
+                                          f"GROUP BY CATEGORY_IN"
+            await cursor.execute(sql_get_data_diagram_income)
+            row_table = await cursor.fetchall()
+            list_name = []
+            list_value = []
+            if row_table:
+                for item in row_table:
+                    list_name.append(item[0])
+                    list_value.append(item[1])
+            return list_name, list_value
             
     @staticmethod
     def quote(request) -> str:
@@ -876,40 +985,52 @@ class Execute:
         assembling_dict_goals['Цели Стр.' + str(y)] = dict_goal
         return assembling_dict_goals
 
+    @staticmethod
+    def assembling_outlay(arr: list) -> dict:
+        assembling_dict_outlay = {}
+        dict_goal = {}
+        i = 1
+        y = 1
+        for item_goal in arr:
+            if i < 7:
+                dict_goal[item_goal[0]] = [item_goal[1], item_goal[2], item_goal[3],
+                                           item_goal[4], item_goal[5], item_goal[6],
+                                           item_goal[7]]
+                i += 1
 
-# base = Execute()
-# asyncio.run(base.delete_table(f"CATEGORY_INCOME"))
-# str_reminder_days = json.dumps({'MON': 0, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 0, 'SUN': 0})
-# asyncio.run(base.create_table(f"CREATE TABLE IF NOT EXISTS INCOME ("
-#                               f"USER_ID INTEGER NOT NULL, "
-#                               f"DATA_TIME TEXT, "
-#                               f"SUM REAL, "
-#                               f"NAME_BANK TEXT, "
-#                               f"SENDER_FUNDS TEXT, "
-#                               f"CATEGORY_IN INTEGER, "
-#                               f"STATUS_INCOME TEXT , "
-#                               f"FOREIGN KEY (USER_ID) REFERENCES USERS (ID),"
-# #                               f"FOREIGN KEY (CATEGORY_IN) REFERENCES CATEGORY_INCOME (ID))"))
-# asyncio.run(base.create_table(f"CREATE TABLE IF NOT EXISTS CATEGORY_INCOME ("
-#                               f"USER_ID INTEGER NOT NULL, "
-#                               f"NAME TEXT,"
-#                               f"FOREIGN KEY (USER_ID) REFERENCES USERS (ID))"))
-# asyncio.run(base.add_column('OUTLAY', 'STATUS_OUTLAY', 'TEXT'))
-# asyncio.run(base.show_columns('OUTLAY'))
-# asyncio.run(base.update_goal(2, {'user_id': '1660842495', 'goal_name': 'Машина', 'sum_goal': 6000.00,
-#                                  'income_user': 2000.00, 'income_frequency': 2, 'duration': 60,
-#                                  'reminder_days': {'MON': 1, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 1,
-#                                                    'SUN': 1},
-#                                  'reminder_time': '14:00', 'data_finish': '2025-01-30', 'status_goal': 'current'}))
-# asyncio.run(base.delete_user(1660842495))
-# asyncio.run(base.delete_category(2072557270))
-# # asyncio.run(base.delete_goal(7))
-# asyncio.run(base.show_users())
-# asyncio.run(base.show_outlay())
-# asyncio.run(base.set_default_category_outlay(2072557270))
-# asyncio.run(base.show_category('CATEGORY_INCOME'))
-# category = asyncio.run(base.get_category_keyboard(1660842495, 'CATEGORY_INCOME'))
-# for row_category, name_category in category.items():
-#     print(f"{row_category} {name_category}")
-# print(category)
-# asyncio.run(base.show_income())
+            else:
+                assembling_dict_outlay['Расходы Стр.' + str(y)] = dict_goal
+                i = 1
+                dict_goal = {}
+                y += 1
+                dict_goal[item_goal[0]] = [item_goal[1], item_goal[2], item_goal[3],
+                                           item_goal[4], item_goal[5], item_goal[6],
+                                           item_goal[7]]
+                i += 1
+        assembling_dict_outlay['Расходы Стр.' + str(y)] = dict_goal
+        return assembling_dict_outlay
+
+    @staticmethod
+    def assembling_income(arr: list) -> dict:
+        assembling_dict_income = {}
+        dict_goal = {}
+        i = 1
+        y = 1
+        for item_goal in arr:
+            if i < 7:
+                dict_goal[item_goal[0]] = [item_goal[1], item_goal[2], item_goal[3],
+                                           item_goal[4], item_goal[5], item_goal[6],
+                                           item_goal[7]]
+                i += 1
+
+            else:
+                assembling_dict_income['Доходы Стр.' + str(y)] = dict_goal
+                i = 1
+                dict_goal = {}
+                y += 1
+                dict_goal[item_goal[0]] = [item_goal[1], item_goal[2], item_goal[3],
+                                           item_goal[4], item_goal[5], item_goal[6],
+                                           item_goal[7]]
+                i += 1
+        assembling_dict_income['Доходы Стр.' + str(y)] = dict_goal
+        return assembling_dict_income
