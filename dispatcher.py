@@ -135,6 +135,7 @@ class DispatcherMessage(Dispatcher):
         Dispatcher.__init__(self, **kw)
         self.bot = parent
         self.functions = Function(self.bot, self)
+        self.page_goal = self.functions.page_goal
         self.execute = Execute()
         self.queues_message = QueuesMessage()
         self.queues = QueuesMedia(self)
@@ -147,6 +148,12 @@ class DispatcherMessage(Dispatcher):
                           '11:00': '11:00', '12:00': '12:00', '13:00': '13:00', '14:00': '14:00', '15:00': '15:00',
                           '16:00': '16:00', '17:00': '17:00', '18:00': '18:00', '19:00': '19:00', '20:00': '20:00',
                           '21:00': '21:00', '22:00': '22:00', '23:00': '23:00', '00:00': '00:00'}
+        self.dict_bank = {'Сбербанк': 'Сбербанк', 'ВТБ': 'ВТБ', 'Газпромбанк': 'Газпромбанк',
+                          'Альфа-Банк': 'Альфа-Банк', 'Россельхозбанк': 'Россельхозбанк', 'МКБ': 'МКБ',
+                          'Совкомбанк ': 'Совкомбанк', 'Т-Банк': 'Т-Банк', 'Росбанк': 'Росбанк',
+                          'Райффайзен Банк': 'Райффайзен Банк', 'Открытие': 'Открытие', 'Ак Барс Банк': 'Ак Барс Банк',
+                          'ЮниКредит Банк ': 'ЮниКредит Банк', 'Ситибанк': 'Ситибанк', 'Уралсиб': 'Уралсиб',
+                          'Почта Банк': 'Почта Банк', 'Точка': 'Точка', 'Наличные': 'Наличные'}
         self.startup.register(self.on_startup)
         self.shutdown.register(self.on_shutdown)
 
@@ -184,6 +191,14 @@ class DispatcherMessage(Dispatcher):
                 if 'add_goal_name' in self.dict_user[message.from_user.id]['history'][-1]:
                     task = asyncio.create_task(self.functions.show_add_name_goal(message))
                     task.set_name(f'{message.from_user.id}_task_add_name_goal')
+                    await self.queues_message.start(task)
+                elif 'add_recipient_funds' in self.dict_user[message.from_user.id]['history'][-1]:
+                    task = asyncio.create_task(self.functions.show_add_category_out(message))
+                    task.set_name(f'{message.from_user.id}_task_add_category_out')
+                    await self.queues_message.start(task)
+                elif 'add_sender_funds' in self.dict_user[message.from_user.id]['history'][-1]:
+                    task = asyncio.create_task(self.functions.show_add_category_in(message))
+                    task.set_name(f'{message.from_user.id}_task_add_category_in')
                     await self.queues_message.start(task)
                 elif 'ai' in self.dict_user[message.from_user.id]['history'][-1]:
                     task = asyncio.create_task(self.functions.answer_ai(message))
@@ -319,8 +334,92 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{callback.from_user.id}_task_reminder_time')
             await self.queues_message.start(task)
 
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'show_goal'))
+        async def send_show_goal(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_list_goals(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_list_goals')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.in_(self.page_goal)))
+        async def send_page_goal(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_list_goals(callback, page_show=callback.data))
+            task.set_name(f'{callback.from_user.id}_page_goal')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.contains('delete_goal')))
+        async def send_delete_goal(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_delete_goal(callback))
+            task.set_name(f'{callback.from_user.id}_delete_goal')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_new_outlay'))
+        async def send_add_new_outlay_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_add_new_outlay(callback))
+            task.set_name(f'{callback.from_user.id}_task_add_new_outlay')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_new_income'))
+        async def send_add_new_income_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_add_new_income(callback))
+            task.set_name(f'{callback.from_user.id}_task_add_new_income')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_sum_outlay'))
+        async def send_done_sum_outlay_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_add_name_bank_outlay(callback))
+            task.set_name(f'{callback.from_user.id}_task_add_name_bank_outlay')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_sum_income'))
+        async def send_done_sum_income_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_add_name_bank_income(callback))
+            task.set_name(f'{callback.from_user.id}_task_add_name_bank_income')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_add_bank_outlay'))
+        async def send_done_add_bank_outlay_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_add_recipient_funds_outlay(callback))
+            task.set_name(f'{callback.from_user.id}_task_add_recipient_funds_outlay')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_add_bank_income'))
+        async def send_done_add_bank_income_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_add_sender_funds_income(callback))
+            task.set_name(f'{callback.from_user.id}_task_add_sender_funds_income')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.in_(self.dict_bank)))
+        async def send_show_bank(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_bank(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_bank')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.contains('category_outlay_row')))
+        async def send_set_category_out(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.set_category_out(callback))
+            task.set_name(f'{callback.from_user.id}_set_category_out')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.contains('category_income_row')))
+        async def send_set_category_in(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.set_category_in(callback))
+            task.set_name(f'{callback.from_user.id}_set_category_in')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_category_out'))
+        async def send_done_category_out_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_done_category_out(callback))
+            task.set_name(f'{callback.from_user.id}_task_done_category_out')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'done_category_in'))
+        async def send_done_category_in_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_done_category_in(callback))
+            task.set_name(f'{callback.from_user.id}_task_done_category_in')
+            await self.queues_message.start(task)
+
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'ок'))
-        async def send_back_message(callback: CallbackQuery):
+        async def send_ok_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_ok(callback))
             task.set_name(f'{callback.from_user.id}_task_show_ok')
             await self.queues_message.start(task)
@@ -338,6 +437,12 @@ class DispatcherMessage(Dispatcher):
             await self.queues_message.start(task)
 
     async def on_startup(self):
+        if int(os.environ["ADMIN_ID"]) not in self.dict_user.keys():
+            self.dict_user[int(os.environ["ADMIN_ID"])] = {'history': ['start'], 'messages': [],
+                                                           'first_name': '',
+                                                           'last_name': '',
+                                                           'user_name': ''}
+            await self.execute.set_default_category(int(os.environ["ADMIN_ID"]))
         self.dict_user[int(os.environ["ADMIN_ID"])]['messages'] = await self.functions.delete_messages(
             int(os.environ["ADMIN_ID"]), self.dict_user[int(os.environ["ADMIN_ID"])]['messages'])
         answer = await self.bot.send_message(chat_id=os.environ["ADMIN_ID"], text='Бот FinAppBot запущен!')

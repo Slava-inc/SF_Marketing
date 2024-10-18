@@ -1,3 +1,4 @@
+import json
 import random
 import re
 from database_requests import Execute
@@ -34,7 +35,6 @@ class KeyBoardBot:
         button_outlay_keyboard = {'add_new_outlay': 'Добавить новые расходы ➕',
                                   'show_outlay': 'Показать список расходов 👀',
                                   'analytic_outlay': 'Аналитика расходов 📊',
-                                  'change_category_outlay': 'Изменить категории расходов ⚙',
                                   'back': 'Назад 🔙'}
         return button_outlay_keyboard
 
@@ -43,41 +43,56 @@ class KeyBoardBot:
         button_income_keyboard = {'add_new_income': 'Добавить новые доходы ➕',
                                   'show_income': 'Показать список доходов 👀',
                                   'analytic_income': 'Аналитика доходов 📊',
-                                  'change_category_income': 'Изменить категории доходов ⚙',
                                   'back': 'Назад 🔙'}
         return button_income_keyboard
 
     @staticmethod
-    async def get_keyboard_outlay(known_category: bool = True) -> dict:
-        if known_category:
-            button_outlay_keyboard = {'change_category_outlay': 'Изменить категорию расходов ⚙',
-                                      'analytic_outlay': 'Аналитика расходов 📊',
-                                      'back': 'Назад 🔙'}
-        else:
-            button_outlay_keyboard = {'auto': 'Автомобиль 📋',
-                                      'business': 'Бизнес  📋',
-                                      'souvenir': 'Подарки 📋',
-                                      'home_appliances': 'Бытовая техника 📋',
-                                      'children': 'Дети 📋',
-                                      'pets': 'Домашние животные 📋',
-                                      'health ': 'Здоровье и красота 📋',
-                                      'loans': 'Ипотека, долги, кредиты 📋',
-                                      'communal': 'Коммунальные платежи 📋',
-                                      'taxes': 'Налоги и страхование 📋',
-                                      'education': 'Образование 📋',
-                                      'clothes': 'Одежда и аксессуары 📋',
-                                      'relax': 'Отдых и развлечение 📋',
-                                      'food': 'Питание 📋',
-                                      'repair': 'Ремонт и мебель 📋',
-                                      'household ': 'Товары для дома 📋',
-                                      'transport': 'Транспорт 📋',
-                                      'hobby': 'Хобби 📋',
-                                      'connection': 'Связь и интернет ',
-                                      'add_category_outlay': 'Добавить свою категорию ➕',
-                                      'delete_category_outlay': 'Удалить категорию 🗑️',
-                                      'analytic_outlay': 'Аналитика расходов 📊',
-                                      'back': 'Назад 🔙'}
+    async def get_keyboard_outlay() -> dict:
+        button_outlay_keyboard = {'auto': 'Автомобиль 🏎️',
+                                  'business': 'Бизнес  👨‍💼',
+                                  'souvenir': 'Подарки 🎁',
+                                  'home_appliances': 'Бытовая техника 📻',
+                                  'children': 'Дети 👶',
+                                  'pets': 'Домашние животные🐱🐕',
+                                  'health ': 'Здоровье и красота 💊',
+                                  'loans': 'Ипотека, долги, кредиты 💳',
+                                  'communal': 'Коммунальные платежи 🏠',
+                                  'taxes': 'Налоги и страхование 📒',
+                                  'education': 'Образование 🧑‍🎓',
+                                  'clothes': 'Одежда и аксессуары 👒👗',
+                                  'relax': 'Отдых и развлечение 🏖️',
+                                  'food': 'Питание 🍴🥄',
+                                  'repair': 'Ремонт и мебель 🛏🛁',
+                                  'household ': 'Товары для дома 🧼🧹',
+                                  'transport': 'Транспорт 🚌🚇',
+                                  'hobby': 'Хобби 🎩',
+                                  'connection': 'Связь и интернет 🌏',
+                                  'no_name': 'Прочие 📋',
+                                  'back': 'Назад 🔙'}
         return button_outlay_keyboard
+
+    @staticmethod
+    async def get_bank() -> dict:
+        bank_keyboard = {'Сбербанк': 'Сбербанк',
+                         'ВТБ': 'ВТБ',
+                         'Газпромбанк': 'Газпромбанк',
+                         'Альфа-Банк': 'Альфа-Банк',
+                         'Россельхозбанк': 'Россельхозбанк',
+                         'МКБ': 'МКБ',
+                         'Совкомбанк ': 'Совкомбанк',
+                         'Т-Банк': 'Т-Банк',
+                         'Росбанк': 'Росбанк',
+                         'Райффайзен Банк': 'Райффайзен Банк',
+                         'Открытие': 'Открытие',
+                         'Ак Барс Банк': 'Ак Барс Банк',
+                         'ЮниКредит Банк ': 'ЮниКредит Банк',
+                         'Ситибанк': 'Ситибанк',
+                         'Уралсиб': 'Уралсиб',
+                         'Почта Банк': 'Почта Банк',
+                         'Точка': 'Точка',
+                         'Наличные': 'Наличные',
+                         'back': 'Назад 🔙'}
+        return bank_keyboard
 
     @staticmethod
     async def text_for_news() -> str:
@@ -122,10 +137,39 @@ class KeyBoardBot:
         return random.choice(text)
 
     async def text_for_reminder(self, dict_info_goal: dict) -> str:
+        duration = int(dict_info_goal['duration'])
+        monthly_payment = str(int(int(dict_info_goal['sum_goal']) / duration))
+        weekday = await self.get_str_weekday(dict_info_goal['reminder_days'])
+        time_reminder = dict_info_goal['reminder_time']
+        data_in_message = f"{dict_info_goal['data_finish'].split('-')[2]}." \
+                          f"{dict_info_goal['data_finish'].split('-')[1]}." \
+                          f"{dict_info_goal['data_finish'].split('-')[0]} г."
         text = f"Напоминаем про цель, которую Вы перед собой поставили:\n" \
                f"Наименование цели: {self.format_text(dict_info_goal['goal_name'])}\n" \
                f"Сумма цели: {self.format_text(str(int(dict_info_goal['sum_goal'])))} ₽\n" \
-               f"Дата завершения: {self.format_text(dict_info_goal['data_finish'])}"
+               f"Дата завершения: {self.format_text(data_in_message)}" \
+               f"Срок достижения цели: {self.format_text(str(duration))} мес.\n" \
+               f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
+               f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
+               f"Время напоминания о цели: {self.format_text(time_reminder)}"
+        return text
+
+    async def get_info_goal(self, list_info_goal: list) -> str:
+        duration = int(list_info_goal[5])
+        monthly_payment = str(int(int(list_info_goal[2]) / duration))
+        list_reminder_days = await self.get_dict_reminder_days(list_info_goal[6])
+        weekday = await self.get_str_weekday(list_reminder_days)
+        time_reminder = list_info_goal[7]
+        data_in_message = f"{list_info_goal[8].split('-')[2]}." \
+                          f"{list_info_goal[8].split('-')[1]}." \
+                          f"{list_info_goal[8].split('-')[0]} г."
+        text = f"Наименование цели: {self.format_text(list_info_goal[1])}\n" \
+               f"Сумма цели: {self.format_text(str(int(list_info_goal[2])))} ₽\n" \
+               f"Дата завершения: {self.format_text(data_in_message)}\n" \
+               f"Срок достижения цели: {self.format_text(str(duration))} мес.\n" \
+               f"Каждый месяц нужно откладывать: {self.format_text(monthly_payment)} ₽\n" \
+               f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
+               f"Время напоминания о цели: {self.format_text(time_reminder)}"
         return text
 
     @staticmethod
@@ -156,3 +200,41 @@ class KeyBoardBot:
                      '16:00': '16:00', '17:00': '17:00', '18:00': '18:00', '19:00': '19:00', '20:00': '20:00',
                      'back': 'Назад 🔙', '21:00': '21:00', '22:00': '22:00', '23:00': '23:00', '00:00': '00:00'}
         return dict_time
+
+    @property
+    def get_pages_goal(self):
+        dict_pages = {}
+        for item in range(100):
+            dict_pages['Цели Стр.' + str(item)] = str(item)
+        return dict_pages
+
+    @property
+    def get_pages_outlay(self):
+        dict_pages = {}
+        for item in range(100):
+            dict_pages['Расходы Стр.' + str(item)] = str(item)
+        return dict_pages
+
+    @property
+    def get_pages_income(self):
+        dict_pages = {}
+        for item in range(100):
+            dict_pages['Поступления Стр.' + str(item)] = str(item)
+        return dict_pages
+
+    async def get_str_weekday(self, dict_reminder_days: dict) -> str:
+        dict_weekday = await self.get_weekday()
+        list_weekday = []
+        for key, item in dict_reminder_days.items():
+            if item:
+                list_weekday.append(dict_weekday[key])
+        if len(list_weekday) == 0:
+            weekday = 'Не напоминать о цели'
+        else:
+            weekday = ', '.join(list_weekday)
+        return weekday
+
+    @staticmethod
+    async def get_dict_reminder_days(string: str) -> dict:
+        reminder_days = json.loads(string)
+        return reminder_days
