@@ -664,7 +664,10 @@ class Execute:
             row_table = await cursor.fetchall()
             dict_category = {}
             for item in row_table:
-                dict_category[item[0]] = item[1]
+                if name_table == 'CATEGORY_OUTLAY':
+                    dict_category[f"category_outlay_row{str(item[0])}"] = item[1]
+                else:
+                    dict_category[f"category_income_row{str(item[0])}"] = item[1]
             return dict_category
 
     async def set_default_category(self, user_id: int):
@@ -676,22 +679,22 @@ class Execute:
 
     async def execute_set_default_category(self, user_id: int):
         async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
-            default_category = ['Автомобиль 🏎️', 'Бизнес  👨‍💼', 'Подарки 🎁', 'Бытовая техника 📻', 'Дети 👶',
-                                'Домашние животные🐱🐕', 'Здоровье и красота 💊', 'Ипотека, долги, кредиты 💳',
-                                'Коммунальные платежи 🏠', 'Налоги и страхование 📒', 'Образование 🧑‍🎓',
-                                'Одежда и аксессуары 👒👗', 'Отдых и развлечение 🏖️', 'Питание 🍴🥄',
-                                'Ремонт и мебель 🛏🛁', 'Товары для дома 🧼🧹', 'Транспорт 🚌🚇',  'Хобби 🎩',
-                                'Связь и интернет 🌏', 'Прочие 📋']
+            default_category = ['Автомобиль 🏎️', 'Бизнес  👨‍💼', 'Подарки 🎁', 'Быт.техника 📻', 'Дети 👶',
+                                'Питомцы🐱🐕', 'Здоровье 💊', 'Долг/кредиты💳',
+                                'Ком.платежи 🏠', 'Налоги 📒', 'Образование 🧑‍🎓',
+                                'Одежда 👒👗', 'Отдых 🏖️', 'Питание 🍴🥄',
+                                'Ремонт/мебель🛏', 'Товары дом🧼🧹', 'Транспорт 🚌🚇',  'Хобби 🎩',
+                                'Связь/интернет 🌏', 'Прочие 📋']
             for category_name in default_category:
                 sql_category = f"INSERT INTO CATEGORY_OUTLAY " \
                                f"(USER_ID, NAME) " \
                                f"VALUES('{user_id}', '{category_name}') "
                 await cursor.execute(sql_category)
-            default_category = ['Аванс 💵', 'Алименты  👨‍💼', 'Возврат налогов 🧾', 'Грант 🏦', 'Дивиденды 📈',
-                                'Доход от бизнеса 💹', 'Зарплата 💰', 'Пенсия 👴',
+            default_category = ['Аванс 💵', 'Алименты  👨‍💼', 'Возврат налог🧾', 'Грант 🏦', 'Дивиденды 📈',
+                                'От бизнеса 💹', 'Зарплата 💰', 'Пенсия 👴',
                                 'Подарки 🎁', 'Помощь 🆘', 'Премия 🤑',
-                                'Приз (выигрыш) 🕊️', 'Приработок 👨‍💻', 'Проценты по депозиту 🏧',
-                                'Социальное пособие 💳', 'Стипендия 🧑‍🎓', 'Прочие 📋']
+                                'Выигрыш 🕊️', 'Приработок 👨‍💻', '% депозит 🏧',
+                                'Пособие 💳', 'Стипендия 🧑‍🎓', 'Прочие 📋']
             for category_name in default_category:
                 sql_category = f"INSERT INTO CATEGORY_INCOME " \
                                f"(USER_ID, NAME) " \
@@ -783,6 +786,46 @@ class Execute:
             else:
                 row_id = row_table[0]
             return row_id
+
+    async def get_name_category_outlay(self, row_id: int) -> str:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_name_category_outlay(row_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_name_category_outlay', os.environ["EMAIL"], str(e))
+
+    async def execute_get_name_category_outlay(self, row_id: int) -> str:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_get_name_category_outlay = f"SELECT NAME " \
+                                           f"FROM CATEGORY_OUTLAY " \
+                                           f"WHERE ROWID = '{row_id}' "
+            await cursor.execute(sql_get_name_category_outlay)
+            row_table = await cursor.fetchone()
+            if row_table is None:
+                row_id = 0
+            else:
+                row_id = row_table[0]
+            return row_id
+
+    async def get_name_category_income(self, row_id: int) -> str:
+        try:
+            async with aiosqlite.connect(self.connect_string) as self.conn:
+                return await self.execute_get_name_category_income(row_id)
+        except Exception as e:
+            await send_message('Ошибка запроса в методе get_name_category_income', os.environ["EMAIL"], str(e))
+
+    async def execute_get_name_category_income(self, row_id: int) -> str:
+        async with self.conn.execute('PRAGMA journal_mode=wal') as cursor:
+            sql_get_name_category_income = f"SELECT NAME " \
+                                           f"FROM CATEGORY_INCOME " \
+                                           f"WHERE ROWID = '{row_id}' "
+            await cursor.execute(sql_get_name_category_income)
+            row_table = await cursor.fetchone()
+            if row_table is None:
+                row_id = 0
+            else:
+                row_id = row_table[0]
+            return row_id
             
     @staticmethod
     def quote(request) -> str:
@@ -858,13 +901,13 @@ class Execute:
 #                                  'reminder_days': {'MON': 1, 'TUE': 0, 'WED': 0, 'THU': 0, 'FRI': 0, 'SAT': 1,
 #                                                    'SUN': 1},
 #                                  'reminder_time': '14:00', 'data_finish': '2025-01-30', 'status_goal': 'current'}))
-# asyncio.run(base.delete_user(2072557270))
+# asyncio.run(base.delete_user(1660842495))
 # asyncio.run(base.delete_category(2072557270))
 # # asyncio.run(base.delete_goal(7))
 # asyncio.run(base.show_users())
 # asyncio.run(base.show_outlay())
 # asyncio.run(base.set_default_category_outlay(2072557270))
-# asyncio.run(base.show_category('CATEGORY_OUTLAY'))
+# asyncio.run(base.show_category('CATEGORY_INCOME'))
 # category = asyncio.run(base.get_category_keyboard(1660842495, 'CATEGORY_INCOME'))
 # for row_category, name_category in category.items():
 #     print(f"{row_category} {name_category}")
