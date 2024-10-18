@@ -17,7 +17,14 @@ DATA_TIME text
 SUM real
 NAME_BANK text
 RECIPIENT_FUNDS text
-CATEGORY_OUT integer  FK > CATEGORY_OUTLAY.ID
+CATEGORY_OUT integer FK > CATEGORY_OUTLAY.ID 
+STATUS_OUTLAY text
+
+CATEGORY_OUTLAY
+-
+ID integer PK
+USER_ID integer FK > USERS.ID
+NAME text
 
 INCOME
 -
@@ -27,15 +34,10 @@ DATE_TIME datetime
 SUM real
 NAME_BANK text
 SENDER_FUNDS text
-CATEGORY_IN integer FK > CATEGORY_INCOME.ID
+CATEGORY_IN integer FK > CATEGORY_INCOME.ID 
+STATUS_INCOME text
 
 CATEGORY_INCOME
--
-ID integer PK
-USER_ID integer FK > USERS.ID
-NAME text
-
-CATEGORY_OUTLAY
 -
 ID integer PK
 USER_ID integer FK > USERS.ID
@@ -56,4 +58,4 @@ DATA_FINISH text
 STATUS_GOAL text
 
 
-//POSITION({"USERS":{"x":50,"y":50,"w":230},"OUTLAY":{"x":330,"y":50,"w":230},"INCOME":{"x":610,"y":50,"w":230},"CATEGORY_INCOME":{"x":50,"y":260,"w":230},"CATEGORY_OUTLAY":{"x":330,"y":260,"w":230},"GOAL":{"x":610,"y":452,"w":230}})
+//POSITION({"USERS":{"x":683,"y":26,"w":230},"INCOME":{"x":1200,"y":33,"w":230},"CATEGORY_INCOME":{"x":944,"y":331,"w":230},"GOAL":{"x":435,"y":431,"w":230},"CATEGORY_OUTLAY":{"x":365,"y":272,"w":230},"OUTLAY":{"x":58,"y":47,"w":230}})
