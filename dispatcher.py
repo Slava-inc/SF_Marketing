@@ -136,6 +136,8 @@ class DispatcherMessage(Dispatcher):
         self.bot = parent
         self.functions = Function(self.bot, self)
         self.page_goal = self.functions.page_goal
+        self.page_outlay = self.functions.page_outlay
+        self.page_income = self.functions.page_income
         self.execute = Execute()
         self.queues_message = QueuesMessage()
         self.queues = QueuesMedia(self)
@@ -340,16 +342,52 @@ class DispatcherMessage(Dispatcher):
             task.set_name(f'{callback.from_user.id}_task_show_list_goals')
             await self.queues_message.start(task)
 
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'show_outlay'))
+        async def send_show_outlay(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_list_outlay(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_list_outlay')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'show_income'))
+        async def send_show_income(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_list_income(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_list_income')
+            await self.queues_message.start(task)
+
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.in_(self.page_goal)))
         async def send_page_goal(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_list_goals(callback, page_show=callback.data))
             task.set_name(f'{callback.from_user.id}_page_goal')
             await self.queues_message.start(task)
 
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.in_(self.page_outlay)))
+        async def send_page_outlay(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_list_outlay(callback, page_show=callback.data))
+            task.set_name(f'{callback.from_user.id}_page_outlay')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.in_(self.page_income)))
+        async def send_page_income(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_list_income(callback, page_show=callback.data))
+            task.set_name(f'{callback.from_user.id}_page_income')
+            await self.queues_message.start(task)
+
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.contains('delete_goal')))
         async def send_delete_goal(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_delete_goal(callback))
             task.set_name(f'{callback.from_user.id}_delete_goal')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.contains('delete_outlay')))
+        async def send_delete_outlay(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_delete_outlay(callback))
+            task.set_name(f'{callback.from_user.id}_delete_outlay')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data.contains('delete_income')))
+        async def send_delete_income(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_delete_income(callback))
+            task.set_name(f'{callback.from_user.id}_delete_income')
             await self.queues_message.start(task)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'add_new_outlay'))
@@ -428,6 +466,18 @@ class DispatcherMessage(Dispatcher):
         async def send_virtual_assistant_message(callback: CallbackQuery):
             task = asyncio.create_task(self.functions.show_virtual_assistant(callback))
             task.set_name(f'{callback.from_user.id}_task_show_virtual_assistant')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'analytic_outlay'))
+        async def send_analytic_outlay_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_analytic_outlay(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_analytic_outlay')
+            await self.queues_message.start(task)
+
+        @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'analytic_income'))
+        async def send_analytic_income_message(callback: CallbackQuery):
+            task = asyncio.create_task(self.functions.show_analytic_income(callback))
+            task.set_name(f'{callback.from_user.id}_task_show_analytic_income')
             await self.queues_message.start(task)
 
         @self.callback_query(F.from_user.id.in_(self.dict_user) & (F.data == 'back'))

@@ -172,6 +172,34 @@ class KeyBoardBot:
                f"Время напоминания о цели: {self.format_text(time_reminder)}"
         return text
 
+    async def get_info_outlay(self, list_info_outlay: list) -> str:
+        data_time = list_info_outlay[1]
+        sum_outlay = int(list_info_outlay[2])
+        name_bank = list_info_outlay[3]
+        recipient_funds = list_info_outlay[4]
+        value_category_out = list_info_outlay[5]
+        str_category_out = await self.execute.get_name_category_outlay(value_category_out)
+        text = f"Дата расходов: {self.format_text(data_time)}\n" \
+               f"Сумма расходов: {self.format_text(str(sum_outlay))} ₽\n" \
+               f"Способ списания расходов: {self.format_text(name_bank)}\n" \
+               f"Наименование получателя: {self.format_text(recipient_funds)}\n" \
+               f"Категория расходов: {self.format_text(str_category_out)}"
+        return text
+
+    async def get_info_income(self, list_info_income: list) -> str:
+        data_time = list_info_income[1]
+        sum_income = int(list_info_income[2])
+        name_bank = list_info_income[3]
+        sender_funds = list_info_income[4]
+        value_category_in = list_info_income[5]
+        str_category_in = await self.execute.get_name_category_income(value_category_in)
+        text = f"Дата доходов: {self.format_text(data_time)}\n" \
+               f"Сумма доходов: {self.format_text(str(sum_income))} ₽\n" \
+               f"Способ поступления доходов: {self.format_text(name_bank)}\n" \
+               f"Наименование отправителя: {self.format_text(sender_funds)}\n" \
+               f"Категория доходов: {self.format_text(str_category_in)}"
+        return text
+
     @staticmethod
     async def get_calculater() -> dict:
         calculater = {'1': '1⃣', '2': '2⃣', '3': '3⃣',
@@ -219,7 +247,7 @@ class KeyBoardBot:
     def get_pages_income(self):
         dict_pages = {}
         for item in range(100):
-            dict_pages['Поступления Стр.' + str(item)] = str(item)
+            dict_pages['Доходы Стр.' + str(item)] = str(item)
         return dict_pages
 
     async def get_str_weekday(self, dict_reminder_days: dict) -> str:

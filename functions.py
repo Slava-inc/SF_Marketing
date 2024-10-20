@@ -9,6 +9,7 @@ from keyboard import KeyBoardBot
 from database_requests import Execute
 from edit_pdf import GetTextOCR
 from ai import AI
+from diagram import UserCosts
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, FSInputFile, ChatPermissions
 from aiogram.utils.keyboard import InlineKeyboardMarkup
@@ -24,9 +25,12 @@ class Function:
         self.dispatcher = dispatcher
         self.keyboard = KeyBoardBot()
         self.page_goal = self.keyboard.get_pages_goal
+        self.page_outlay = self.keyboard.get_pages_outlay
+        self.page_income = self.keyboard.get_pages_income
         self.execute = Execute()
         self.info_pdf = GetTextOCR()
         self.ai = AI(os.environ["TOKEN_SBER"])
+        self.diagram = UserCosts()
         self.dict_user = asyncio.run(self.execute.get_dict_user)
         self.dict_goal = asyncio.run(self.execute.get_dict_goal)
         self.dict_outlay = asyncio.run(self.execute.get_dict_outlay)
@@ -61,6 +65,10 @@ class Function:
                 await self.show_done_reminder_time(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] in self.page_goal.keys():
                 await self.show_list_goals(call_back, self.dict_user[call_back.from_user.id]['history'][-1])
+            elif self.dict_user[call_back.from_user.id]['history'][-1] in self.page_outlay.keys():
+                await self.show_list_outlay(call_back, self.dict_user[call_back.from_user.id]['history'][-1])
+            elif self.dict_user[call_back.from_user.id]['history'][-1] in self.page_income.keys():
+                await self.show_list_income(call_back, self.dict_user[call_back.from_user.id]['history'][-1])
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_outlay':
                 await self.show_add_name_bank_outlay(call_back, previous_history)
             elif self.dict_user[call_back.from_user.id]['history'][-1] == 'add_sum_income':
@@ -1460,7 +1468,6 @@ class Function:
                    f"Дни напоминания о цели: {self.format_text(weekday)}\n" \
                    f"{self.format_text(text_in_message)}\n" \
                    f"Время напоминания о цели: {self.format_text(time_reminder)}"
-
             answer = await self.bot.push_photo(call_back.message.chat.id, text,
                                                self.build_keyboard(keyboard_time, 5, button_done),
                                                self.bot.logo_goal_menu)
@@ -1479,9 +1486,15 @@ class Function:
         if back_history is None:
             number_page = f"\nСтраница №{page_show.split('Цели Стр.')[1]}"
             text_by_format = self.format_text(text + number_page)
-            heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
-                                                self.build_keyboard(pages, 3),
-                                                self.bot.logo_goal_menu)
+            if len(dict_pages_goals[page_show]) == 0:
+                keyboard_back = {'back': 'Назад 🔙'}
+                heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                    self.build_keyboard(pages, 3, keyboard_back),
+                                                    self.bot.logo_goal_menu)
+            else:
+                heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                    self.build_keyboard(pages, 3),
+                                                    self.bot.logo_goal_menu)
             self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
                 call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
             self.dict_user[call_back.from_user.id]['messages'].append(str(heading.message_id))
@@ -1513,6 +1526,26 @@ class Function:
         await self.dispatcher.scheduler.delete_reminder(int(row_id), self.dict_goal[int(row_id)])
         await self.execute.delete_goal(int(row_id))
         self.dict_goal.pop(int(row_id))
+        self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+            call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'],
+            str(call_back.message.message_id), True)
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_delete_outlay(self, call_back: CallbackQuery):
+        row_id = call_back.data.split('delete_outlay')[0]
+        await self.execute.delete_outlay(int(row_id))
+        self.dict_outlay.pop(int(row_id))
+        self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+            call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'],
+            str(call_back.message.message_id), True)
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_delete_income(self, call_back: CallbackQuery):
+        row_id = call_back.data.split('delete_income')[0]
+        await self.execute.delete_income(int(row_id))
+        self.dict_income.pop(int(row_id))
         self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
             call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'],
             str(call_back.message.message_id), True)
@@ -2142,6 +2175,166 @@ class Function:
                 call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
             self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
         await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_list_outlay(self, call_back: CallbackQuery, back_history: str = None,
+                               page_show: str = 'Расходы Стр.1'):
+        dict_pages_outlay = await self.execute.get_pages_outlay(call_back.from_user.id)
+        pages = {}
+        for page in dict_pages_outlay.keys():
+            pages[page] = page
+        text = f"{self.format_text('Список Ваших расходов ниже:')}"
+        if back_history is None:
+            number_page = f"\nСтраница №{page_show.split('Расходы Стр.')[1]}"
+            text_by_format = self.format_text(text + number_page)
+            if len(dict_pages_outlay[page_show]) == 0:
+                keyboard_back = {'back': 'Назад 🔙'}
+                heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                    self.build_keyboard(pages, 2, keyboard_back),
+                                                    self.bot.logo_outlay_menu)
+            else:
+                heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                    self.build_keyboard(pages, 2),
+                                                    self.bot.logo_outlay_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(heading.message_id))
+            for key, value in dict_pages_outlay[page_show].items():
+                menu_button = {'back': 'Назад 🔙', f'{key}delete_outlay': 'Удалить расход 🗑️'}
+                text_outlay = await self.keyboard.get_info_outlay(value)
+                answer = await self.answer_message(heading, text_outlay, self.build_keyboard(menu_button, 2))
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[call_back.from_user.id]['history'].append(page_show)
+        else:
+            number_page = f"\nСтраница №{back_history.split('Расходы Стр.')[1]}"
+            text_by_format = self.format_text(text + number_page)
+            heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                self.build_keyboard(pages, 3),
+                                                self.bot.logo_outlay_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(heading.message_id))
+            for key, value in dict_pages_outlay[back_history].items():
+                menu_button = {'back': 'Назад 🔙', f'{key}delete_outlay': 'Удалить цель 🗑️'}
+                text_outlay = await self.keyboard.get_info_outlay(value)
+                answer = await self.answer_message(heading, text_outlay, self.build_keyboard(menu_button, 2))
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_list_income(self, call_back: CallbackQuery, back_history: str = None,
+                               page_show: str = 'Доходы Стр.1'):
+        dict_pages_income = await self.execute.get_pages_income(call_back.from_user.id)
+        pages = {}
+        for page in dict_pages_income.keys():
+            pages[page] = page
+        text = f"{self.format_text('Список Ваших доходов ниже:')}"
+        if back_history is None:
+            number_page = f"\nСтраница №{page_show.split('Доходы Стр.')[1]}"
+            text_by_format = self.format_text(text + number_page)
+            if len(dict_pages_income[page_show]) == 0:
+                keyboard_back = {'back': 'Назад 🔙'}
+                heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                    self.build_keyboard(pages, 2, keyboard_back),
+                                                    self.bot.logo_income_menu)
+            else:
+                heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                    self.build_keyboard(pages, 2),
+                                                    self.bot.logo_income_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(heading.message_id))
+            for key, value in dict_pages_income[page_show].items():
+                menu_button = {'back': 'Назад 🔙', f'{key}delete_income': 'Удалить доход 🗑️'}
+                text_income = await self.keyboard.get_info_income(value)
+                answer = await self.answer_message(heading, text_income, self.build_keyboard(menu_button, 2))
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+            self.dict_user[call_back.from_user.id]['history'].append(page_show)
+        else:
+            number_page = f"\nСтраница №{back_history.split('Доходы Стр.')[1]}"
+            text_by_format = self.format_text(text + number_page)
+            heading = await self.bot.push_photo(call_back.message.chat.id, text_by_format,
+                                                self.build_keyboard(pages, 3),
+                                                self.bot.logo_income_menu)
+            self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+                call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+            self.dict_user[call_back.from_user.id]['messages'].append(str(heading.message_id))
+            for key, value in dict_pages_income[back_history].items():
+                menu_button = {'back': 'Назад 🔙', f'{key}delete_income': 'Удалить цель 🗑️'}
+                text_income = await self.keyboard.get_info_income(value)
+                answer = await self.answer_message(heading, text_income, self.build_keyboard(menu_button, 2))
+                self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        return True
+
+    async def show_analytic_outlay(self, call_back: CallbackQuery):
+        data_outlay = await self.execute.get_data_diagram_outlay(call_back.from_user.id)
+        if len(data_outlay[0]) != 0:
+            check = await self.diagram.create_diagram_outlay(data_outlay[0], data_outlay[1])
+            if check:
+                fs_input_file = FSInputFile("images/fig1.png")
+                back_button = {'back': 'Назад 🔙'}
+                text = f"{self.dict_user[call_back.from_user.id]['first_name']} " \
+                       f"{self.dict_user[call_back.from_user.id]['last_name']}, " \
+                       f"на рисунке выше Ваш анализ расходов по категориям за весь период"
+                answer = await self.bot.push_photo(call_back.message.chat.id, self.format_text(text),
+                                                   self.build_keyboard(back_button, 1), fs_input_file)
+            else:
+                back_button = {'back': 'Назад 🔙'}
+                text = f"{self.dict_user[call_back.from_user.id]['first_name']} " \
+                       f"{self.dict_user[call_back.from_user.id]['last_name']}, " \
+                       f"у Вас ещё не внесены никакие расходы, добавьте расходы в меню"
+                answer = await self.bot.push_photo(call_back.message.chat.id, self.format_text(text),
+                                                   self.build_keyboard(back_button, 1), self.bot.logo_outlay_menu)
+        else:
+            back_button = {'back': 'Назад 🔙'}
+            text = f"{self.dict_user[call_back.from_user.id]['first_name']} " \
+                   f"{self.dict_user[call_back.from_user.id]['last_name']}, " \
+                   f"у Вас ещё не внесены никакие расходы, добавьте расходы в меню"
+            answer = await self.bot.push_photo(call_back.message.chat.id, self.format_text(text),
+                                               self.build_keyboard(back_button, 1), self.bot.logo_outlay_menu)
+        self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+            call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+        self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        self.dict_user[call_back.from_user.id]['history'].append('show_analytic_outlay')
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        if os.path.exists("images/fig1.png"):
+            os.remove("images/fig1.png")
+        return True
+
+    async def show_analytic_income(self, call_back: CallbackQuery):
+        data_income = await self.execute.get_data_diagram_income(call_back.from_user.id)
+        if len(data_income[0]) != 0:
+            check = await self.diagram.create_diagram_outlay(data_income[0], data_income[1])
+            if check:
+                fs_input_file = FSInputFile("images/fig1.png")
+                back_button = {'back': 'Назад 🔙'}
+                text = f"{self.dict_user[call_back.from_user.id]['first_name']} " \
+                       f"{self.dict_user[call_back.from_user.id]['last_name']}, " \
+                       f"на рисунке выше Ваш анализ доходов по категориям за весь период"
+                answer = await self.bot.push_photo(call_back.message.chat.id, self.format_text(text),
+                                                   self.build_keyboard(back_button, 1), fs_input_file)
+            else:
+                back_button = {'back': 'Назад 🔙'}
+                text = f"{self.dict_user[call_back.from_user.id]['first_name']} " \
+                       f"{self.dict_user[call_back.from_user.id]['last_name']}, " \
+                       f"у Вас ещё не внесены никакие доходы, добавьте доходы в меню"
+                answer = await self.bot.push_photo(call_back.message.chat.id, self.format_text(text),
+                                                   self.build_keyboard(back_button, 1), self.bot.logo_income_menu)
+        else:
+            back_button = {'back': 'Назад 🔙'}
+            text = f"{self.dict_user[call_back.from_user.id]['first_name']} " \
+                   f"{self.dict_user[call_back.from_user.id]['last_name']}, " \
+                   f"у Вас ещё не внесены никакие доходы, добавьте доходы в меню"
+            answer = await self.bot.push_photo(call_back.message.chat.id, self.format_text(text),
+                                               self.build_keyboard(back_button, 1), self.bot.logo_income_menu)
+        self.dict_user[call_back.from_user.id]['messages'] = await self.delete_messages(
+            call_back.from_user.id, self.dict_user[call_back.from_user.id]['messages'])
+        self.dict_user[call_back.from_user.id]['messages'].append(str(answer.message_id))
+        self.dict_user[call_back.from_user.id]['history'].append('show_analytic_outlay')
+        await self.execute.update_user(call_back.from_user.id, self.dict_user[call_back.from_user.id])
+        if os.path.exists("images/fig1.png"):
+            os.remove("images/fig1.png")
         return True
 
     async def get_document(self, message: Message, list_messages: list):
