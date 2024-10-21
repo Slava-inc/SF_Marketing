@@ -12,8 +12,11 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Execute:
-    def __init__(self):
-        self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
+    def __init__(self, connect_string=None):
+        if connect_string == None:
+            self.connect_string = os.path.join(os.path.split(os.path.dirname(__file__))[0], os.environ["CONNECTION"])
+        else:
+            self.connect_string = connect_string
         self.conn = None
 
     async def create_data_base(self):
