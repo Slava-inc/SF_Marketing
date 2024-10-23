@@ -11,7 +11,7 @@ USER_NAME text
 
 OUTLAY
 -
-ID integer PK
+ROWID integer PK
 USER_ID integer FK > USERS.ID
 DATA_TIME text
 SUM real
